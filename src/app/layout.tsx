@@ -15,7 +15,7 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
     title: "The Archive | PDF Hosting",
-    description: "Archive-grade PDF hosting built with Supabase Auth and Vercel Blob.",
+    description: "Secure PDF hosting with Supabase Auth, in-browser preview, and Vercel Blob or Supabase Storage.",
 };
 
 export default function RootLayout({
