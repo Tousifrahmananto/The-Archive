@@ -63,11 +63,17 @@ function HomePageContent() {
     const [supabase] = useState(() => (hasSupabaseEnv ? createClient() : null));
     const [session, setSession] = useState<Session | null>(null);
     const [documents, setDocuments] = useState<ArchiveDocument[]>([]);
+    const [sharedPathnames, setSharedPathnames] = useState<string[]>([]);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [layoutMode, setLayoutMode] = useState<"grid" | "list">("grid");
+    const [deletingId, setDeletingId] = useState<string | null>(null);
     const [currentView, setCurrentView] = useState<ViewType>("landing");
     const [selectedDoc, setSelectedDoc] = useState<ArchiveDocument | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [message, setMessage] = useState("");
     const oauthCode = searchParams.get("code");
+
+    const storageKey = session?.user.id ? `archive-shared:${session.user.id}` : null;
 
     async function getAccessToken() {
         if (!supabase) {
@@ -164,11 +170,47 @@ function HomePageContent() {
         if (!session) {
             setDocuments([]);
             setSelectedDoc(null);
+            setSharedPathnames([]);
             return;
         }
 
         void loadDocuments(session);
     }, [session]);
+
+    useEffect(() => {
+        if (!storageKey) {
+            return;
+        }
+
+        try {
+            const raw = window.localStorage.getItem(storageKey);
+
+            if (!raw) {
+                setSharedPathnames([]);
+                return;
+            }
+
+            const parsed = JSON.parse(raw) as unknown;
+
+            if (!Array.isArray(parsed)) {
+                setSharedPathnames([]);
+                return;
+            }
+
+            const cleaned = parsed.filter((item): item is string => typeof item === "string");
+            setSharedPathnames(cleaned);
+        } catch {
+            setSharedPathnames([]);
+        }
+    }, [storageKey]);
+
+    useEffect(() => {
+        if (!storageKey) {
+            return;
+        }
+
+        window.localStorage.setItem(storageKey, JSON.stringify(sharedPathnames));
+    }, [sharedPathnames, storageKey]);
 
     const totalStorage = useMemo(
         () => documents.reduce((acc, file) => acc + file.bytes, 0),
@@ -193,6 +235,102 @@ function HomePageContent() {
         setCurrentView("library");
     }
 
+    async function handleDeleteDoc(doc: ArchiveDocument) {
+        if (!accessToken) {
+            setMessage("You need to sign in before deleting files.");
+            return;
+        }
+
+        const confirmed = window.confirm(`Delete \"${doc.title}\" from your archive?`);
+
+        if (!confirmed) {
+            return;
+        }
+
+        setDeletingId(doc.id);
+
+        try {
+            const response = await fetch("/api/delete", {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({ url: doc.url, pathname: doc.pathname }),
+            });
+
+            const data = (await response.json()) as { error?: string };
+
+            if (!response.ok) {
+                throw new Error(data.error ?? "Delete failed.");
+            }
+
+            setDocuments((prev) => prev.filter((item) => item.id !== doc.id));
+            setSharedPathnames((prev) => prev.filter((pathname) => pathname !== doc.pathname));
+
+            if (selectedDoc?.id === doc.id) {
+                setSelectedDoc(null);
+                setCurrentView("library");
+            }
+
+            setMessage("Document removed from archive.");
+        } catch (error) {
+            const text = error instanceof Error ? error.message : "Delete failed.";
+            setMessage(text);
+        } finally {
+            setDeletingId(null);
+        }
+    }
+
+    function markDocumentAsShared(doc: ArchiveDocument) {
+        setSharedPathnames((prev) => {
+            if (prev.includes(doc.pathname)) {
+                return prev;
+            }
+
+            return [...prev, doc.pathname];
+        });
+    }
+
+    const docsWithShareState = useMemo(
+        () =>
+            documents.map((doc) => {
+                const isShared = sharedPathnames.includes(doc.pathname);
+                const nextTags = ["PDF", isShared ? "Shared" : "Private"];
+
+                return {
+                    ...doc,
+                    tags: nextTags,
+                };
+            }),
+        [documents, sharedPathnames]
+    );
+
+    const scopedDocuments = useMemo(() => {
+        let scoped = docsWithShareState;
+
+        if (currentView === "shared") {
+            scoped = scoped.filter((doc) => sharedPathnames.includes(doc.pathname));
+        }
+
+        if (currentView === "recent") {
+            scoped = [...scoped].sort(
+                (a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+            );
+        }
+
+        const query = searchQuery.trim().toLowerCase();
+
+        if (!query) {
+            return scoped;
+        }
+
+        return scoped.filter((doc) => {
+            const haystack = `${doc.title} ${doc.pathname} ${doc.tags.join(" ")}`.toLowerCase();
+            return haystack.includes(query);
+        });
+    }, [currentView, docsWithShareState, searchQuery, sharedPathnames]);
+
     const handleSelectDoc = (doc: ArchiveDocument) => {
         setSelectedDoc(doc);
         setCurrentView("viewer");
@@ -205,13 +343,25 @@ function HomePageContent() {
         if (currentView === "upload") {
             return { title: "Ingestion Engine", subtitle: "Deposit documents into the archive" };
         }
+        if (currentView === "recent") {
+            return {
+                title: "Recent Records",
+                subtitle: `${scopedDocuments.length} results`,
+            };
+        }
+        if (currentView === "shared") {
+            return {
+                title: "Shared Records",
+                subtitle: `${scopedDocuments.length} shared documents`,
+            };
+        }
         if (currentView === "profile" || currentView === "settings") {
             return { title: "Registry Control", subtitle: "Manage your secure session" };
         }
-        if (documents.length > 0) {
+        if (scopedDocuments.length > 0) {
             return {
                 title: "Recent Records",
-                subtitle: `${documents.length} documents • ${formatBytes(totalStorage)} total`,
+                subtitle: `${scopedDocuments.length} documents • ${formatBytes(totalStorage)} total`,
             };
         }
         return {};
@@ -228,22 +378,69 @@ function HomePageContent() {
     }
 
     const accessToken = session.access_token;
+    const searchDisabled = !["library", "recent", "shared"].includes(currentView);
+
+    const libraryEmptyMessage =
+        currentView === "shared"
+            ? "No shared PDFs yet. Use Share Link in the viewer to pin records here."
+            : searchQuery.trim().length > 0
+                ? "No matching PDFs found for this search."
+                : "No PDFs have been archived yet.";
 
     const renderView = () => {
         switch (currentView) {
             case "library":
             case "recent":
             case "shared":
-                return <Library documents={documents} onSelectDoc={handleSelectDoc} />;
+                return (
+                    <Library
+                        documents={scopedDocuments}
+                        onSelectDoc={handleSelectDoc}
+                        onDeleteDoc={handleDeleteDoc}
+                        deletingId={deletingId}
+                        layoutMode={layoutMode}
+                        onLayoutModeChange={setLayoutMode}
+                        emptyMessage={libraryEmptyMessage}
+                    />
+                );
             case "upload":
                 return <UploadView accessToken={accessToken} onUploaded={handleUploadCompleted} />;
             case "viewer":
-                return selectedDoc ? <DocumentViewer doc={selectedDoc} onBack={() => setCurrentView("library")} /> : <Library documents={documents} onSelectDoc={handleSelectDoc} />;
+                return selectedDoc ? (
+                    <DocumentViewer
+                        doc={selectedDoc}
+                        onBack={() => setCurrentView("library")}
+                        onDelete={handleDeleteDoc}
+                        isDeleting={deletingId === selectedDoc.id}
+                        onShared={markDocumentAsShared}
+                        onMenuClick={() => setMessage("Viewer actions are available: share, open, and delete.")}
+                    />
+                ) : (
+                    <Library
+                        documents={scopedDocuments}
+                        onSelectDoc={handleSelectDoc}
+                        onDeleteDoc={handleDeleteDoc}
+                        deletingId={deletingId}
+                        layoutMode={layoutMode}
+                        onLayoutModeChange={setLayoutMode}
+                        emptyMessage={libraryEmptyMessage}
+                    />
+                );
             case "profile":
             case "settings":
                 return <ProfileView sessionEmail={session.user.email ?? undefined} onLogout={handleLogout} />;
             default:
-                return <Library documents={documents} onSelectDoc={handleSelectDoc} />;
+                return (
+                    <Library
+                        documents={scopedDocuments}
+                        onSelectDoc={handleSelectDoc}
+                        onDeleteDoc={handleDeleteDoc}
+                        deletingId={deletingId}
+                        layoutMode={layoutMode}
+                        onLayoutModeChange={setLayoutMode}
+                        emptyMessage={libraryEmptyMessage}
+                    />
+                );
         }
     };
 
@@ -265,7 +462,16 @@ function HomePageContent() {
             />
 
             <main className="min-h-screen relative lg:ml-64">
-                <TopBar viewTitle={topBarConfig.title} subtitle={topBarConfig.subtitle} userEmail={session.user.email ?? undefined} />
+                <TopBar
+                    viewTitle={topBarConfig.title}
+                    subtitle={topBarConfig.subtitle}
+                    userEmail={session.user.email ?? undefined}
+                    searchValue={searchQuery}
+                    onSearchChange={setSearchQuery}
+                    searchDisabled={searchDisabled}
+                    onNotificationClick={() => setMessage("No new notifications.")}
+                    onMenuClick={() => setMessage("Top bar options are active in library and viewer flows.")}
+                />
 
                 <AnimatePresence mode="wait">
                     <motion.div

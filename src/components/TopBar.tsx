@@ -6,9 +6,23 @@ interface TopBarProps {
     viewTitle?: string;
     subtitle?: string;
     userEmail?: string;
+    searchValue: string;
+    onSearchChange: (value: string) => void;
+    searchDisabled?: boolean;
+    onNotificationClick?: () => void;
+    onMenuClick?: () => void;
 }
 
-export default function TopBar({ viewTitle, subtitle, userEmail }: TopBarProps) {
+export default function TopBar({
+    viewTitle,
+    subtitle,
+    userEmail,
+    searchValue,
+    onSearchChange,
+    searchDisabled,
+    onNotificationClick,
+    onMenuClick,
+}: TopBarProps) {
     return (
         <header className="fixed top-0 right-0 w-full lg:w-[calc(100%-16rem)] h-16 bg-[#050505]/80 backdrop-blur-xl flex justify-between items-center px-6 md:px-10 z-40 border-b border-[#1a1a1a] lg:ml-64">
             <div className="flex items-center flex-1">
@@ -17,13 +31,20 @@ export default function TopBar({ viewTitle, subtitle, userEmail }: TopBarProps) 
                     <input
                         type="text"
                         placeholder="Search Global Archive..."
+                        value={searchValue}
+                        onChange={(event) => onSearchChange(event.target.value)}
+                        disabled={searchDisabled}
                         className="w-full bg-[#0c0c0c] border border-[#1a1a1a] rounded-none py-2 pl-10 pr-4 text-[11px] text-white placeholder-[#555] uppercase tracking-widest focus:border-tertiary-archive transition-all outline-none"
                     />
                 </div>
             </div>
 
             <div className="flex items-center gap-4 md:gap-8">
-                <button className="text-[#666] hover:text-tertiary-archive transition-all relative">
+                <button
+                    type="button"
+                    onClick={onNotificationClick}
+                    className="text-[#666] hover:text-tertiary-archive transition-all relative"
+                >
                     <Bell className="w-5 h-5" />
                     <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-tertiary-archive rounded-full"></span>
                 </button>
@@ -36,7 +57,11 @@ export default function TopBar({ viewTitle, subtitle, userEmail }: TopBarProps) 
                             <p className="text-xs font-light italic text-white font-headline">{viewTitle}</p>
                             <p className="text-[9px] text-[#666] uppercase tracking-[0.2em]">{subtitle}</p>
                         </div>
-                        <button className="p-1.5 hover:bg-[#1a1a1a] rounded-none transition-colors">
+                        <button
+                            type="button"
+                            onClick={onMenuClick}
+                            className="p-1.5 hover:bg-[#1a1a1a] rounded-none transition-colors"
+                        >
                             <MoreVertical className="w-4 h-4 text-[#555]" />
                         </button>
                     </div>

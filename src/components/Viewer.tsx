@@ -8,6 +8,7 @@ import {
     Layout,
     MoreVertical,
     Share2,
+    Trash2,
 } from "lucide-react";
 import { motion } from "motion/react";
 import type { ArchiveDocument } from "@/types";
@@ -15,14 +16,19 @@ import type { ArchiveDocument } from "@/types";
 interface ViewerProps {
     doc: ArchiveDocument;
     onBack: () => void;
+    onDelete: (doc: ArchiveDocument) => void;
+    isDeleting?: boolean;
+    onShared?: (doc: ArchiveDocument) => void;
+    onMenuClick?: () => void;
 }
 
-export default function DocumentViewer({ doc, onBack }: ViewerProps) {
+export default function DocumentViewer({ doc, onBack, onDelete, isDeleting, onShared, onMenuClick }: ViewerProps) {
     const [shareState, setShareState] = useState<"idle" | "copied" | "failed">("idle");
 
     async function handleShareLink() {
         try {
             await navigator.clipboard.writeText(doc.url);
+            onShared?.(doc);
             setShareState("copied");
             window.setTimeout(() => setShareState("idle"), 2000);
         } catch {
@@ -61,7 +67,11 @@ export default function DocumentViewer({ doc, onBack }: ViewerProps) {
                         <ExternalLink className="w-3.5 h-3.5" />
                         Open PDF
                     </button>
-                    <button className="p-2.5 text-[#444] hover:text-white transition-all">
+                    <button
+                        type="button"
+                        onClick={onMenuClick}
+                        className="p-2.5 text-[#444] hover:text-white transition-all"
+                    >
                         <MoreVertical className="w-5 h-5" />
                     </button>
                 </div>
@@ -138,6 +148,18 @@ export default function DocumentViewer({ doc, onBack }: ViewerProps) {
                         </div>
                     </dl>
                 </div>
+
+                <button
+                    type="button"
+                    onClick={() => onDelete(doc)}
+                    disabled={isDeleting}
+                    className="w-full py-3.5 border border-red-900/40 text-[10px] font-bold uppercase tracking-widest text-red-900 hover:text-red-500 transition-all active:scale-[0.98] disabled:opacity-60"
+                >
+                    <span className="inline-flex items-center gap-2">
+                        <Trash2 className="w-3.5 h-3.5" />
+                        {isDeleting ? "Deleting Document" : "Delete Document"}
+                    </span>
+                </button>
 
                 <button
                     onClick={() => window.open(doc.url, "_blank", "noopener,noreferrer")}

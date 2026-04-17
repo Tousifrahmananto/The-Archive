@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { CheckCircle, PlusCircle, Shield, Upload, X } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
@@ -12,12 +12,47 @@ interface UploadProps {
 
 export default function UploadView({ accessToken, onUploaded }: UploadProps) {
     const [tags, setTags] = useState(["Architecture", "Design", "2024"]);
+    const [nextTag, setNextTag] = useState("");
     const [isDragOver, setIsDragOver] = useState(false);
     const [progress, setProgress] = useState(0);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [message, setMessage] = useState("");
     const [isUploading, setIsUploading] = useState(false);
     const [archiveLabel, setArchiveLabel] = useState("");
+    const [accessMode, setAccessMode] = useState<"privileged" | "manifest">("privileged");
+    const activeUploadController = useRef<AbortController | null>(null);
+
+    function clearSelection() {
+        if (isUploading) {
+            return;
+        }
+
+        setSelectedFile(null);
+        setArchiveLabel("");
+        setMessage("Upload cleared.");
+        setProgress(0);
+    }
+
+    function addTag(value: string) {
+        const cleaned = value.trim().replace(/\s+/g, " ");
+
+        if (!cleaned) {
+            return;
+        }
+
+        if (tags.some((tag) => tag.toLowerCase() === cleaned.toLowerCase())) {
+            setNextTag("");
+            return;
+        }
+
+        setTags((prev) => [...prev, cleaned]);
+        setNextTag("");
+    }
+
+    function cancelUpload() {
+        activeUploadController.current?.abort();
+        activeUploadController.current = null;
+    }
 
     const formattedSize = useMemo(() => {
         if (!selectedFile) {
@@ -44,6 +79,8 @@ export default function UploadView({ accessToken, onUploaded }: UploadProps) {
         setIsUploading(true);
         setProgress(18);
         setMessage("");
+        const controller = new AbortController();
+        activeUploadController.current = controller;
 
         const formData = new FormData();
         formData.append("file", selectedFile);
@@ -57,6 +94,7 @@ export default function UploadView({ accessToken, onUploaded }: UploadProps) {
                 method: "POST",
                 headers: { Authorization: `Bearer ${accessToken}` },
                 body: formData,
+                signal: controller.signal,
             });
 
             setProgress(74);
@@ -67,13 +105,21 @@ export default function UploadView({ accessToken, onUploaded }: UploadProps) {
             }
 
             setProgress(100);
-            setMessage("Document archived successfully.");
+            setMessage(`Document archived successfully (${accessMode}).`);
             setSelectedFile(null);
+            setArchiveLabel("");
             onUploaded();
         } catch (error) {
+            if (error instanceof DOMException && error.name === "AbortError") {
+                setMessage("Upload canceled.");
+                setProgress(0);
+                return;
+            }
+
             const text = error instanceof Error ? error.message : "Upload failed.";
             setMessage(text);
         } finally {
+            activeUploadController.current = null;
             setIsUploading(false);
             setTimeout(() => setProgress(0), 900);
         }
@@ -169,24 +215,32 @@ export default function UploadView({ accessToken, onUploaded }: UploadProps) {
                             <div className="flex items-center gap-6">
                                 <button
                                     type="button"
-                                    className="text-[9px] font-bold text-[#444] hover:text-white uppercase tracking-[0.2em] transition-colors"
-                                    onClick={() => {
-                                        setSelectedFile(null);
-                                        setArchiveLabel("");
-                                        setMessage("Upload cleared.");
-                                    }}
-                                >
-                                    Interrupt
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleUpload}
                                     disabled={isUploading}
-                                    className="text-[9px] font-bold text-red-900 hover:text-red-500 uppercase tracking-[0.2em] transition-colors flex items-center gap-1.5 disabled:opacity-60"
+                                    className="text-[9px] font-bold text-[#444] hover:text-white uppercase tracking-[0.2em] transition-colors"
+                                    onClick={clearSelection}
                                 >
-                                    <X className="w-3 h-3" />
-                                    {isUploading ? "Transmitting..." : "Terminate"}
+                                    Clear Selection
                                 </button>
+                                {isUploading ? (
+                                    <button
+                                        type="button"
+                                        onClick={cancelUpload}
+                                        className="text-[9px] font-bold text-red-900 hover:text-red-500 uppercase tracking-[0.2em] transition-colors flex items-center gap-1.5"
+                                    >
+                                        <X className="w-3 h-3" />
+                                        Cancel Upload
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={handleUpload}
+                                        disabled={isUploading}
+                                        className="text-[9px] font-bold text-[#555] hover:text-white uppercase tracking-[0.2em] transition-colors flex items-center gap-1.5 disabled:opacity-60"
+                                    >
+                                        <Upload className="w-3 h-3" />
+                                        Upload Now
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </motion.div>
@@ -228,19 +282,21 @@ export default function UploadView({ accessToken, onUploaded }: UploadProps) {
                             <div className="relative">
                                 <input
                                     type="text"
+                                    value={nextTag}
+                                    onChange={(e) => setNextTag(e.target.value)}
                                     placeholder="Insert Registry tag..."
                                     className="w-full bg-black border border-[#1a1a1a] focus:border-tertiary-archive rounded-none py-4 px-6 text-xs text-white outline-none transition-all placeholder-[#333]"
                                     onKeyDown={(e) => {
                                         if (e.key === "Enter") {
-                                            const val = (e.target as HTMLInputElement).value;
-                                            if (val) {
-                                                setTags([...tags, val]);
-                                                (e.target as HTMLInputElement).value = "";
-                                            }
+                                            addTag(nextTag);
                                         }
                                     }}
                                 />
-                                <button type="button" className="absolute right-4 top-1/2 -translate-y-1/2">
+                                <button
+                                    type="button"
+                                    onClick={() => addTag(nextTag)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2"
+                                >
                                     <PlusCircle className="w-4 h-4 text-[#333] hover:text-tertiary-archive transition-colors" />
                                 </button>
                             </div>
@@ -249,11 +305,29 @@ export default function UploadView({ accessToken, onUploaded }: UploadProps) {
                         <div className="space-y-4">
                             <label className="text-[9px] font-bold uppercase tracking-[0.4em] text-[#444] block ml-1">Access Authorization</label>
                             <div className="grid grid-cols-2 gap-4">
-                                <button className="flex items-center justify-center gap-3 py-4 px-4 rounded-none border border-tertiary-archive bg-black text-tertiary-archive font-bold text-[10px] uppercase tracking-widest transition-all">
+                                <button
+                                    type="button"
+                                    onClick={() => setAccessMode("privileged")}
+                                    className={cn(
+                                        "flex items-center justify-center gap-3 py-4 px-4 rounded-none border font-bold text-[10px] uppercase tracking-widest transition-all",
+                                        accessMode === "privileged"
+                                            ? "border-tertiary-archive bg-black text-tertiary-archive"
+                                            : "border-[#1a1a1a] bg-black text-[#444] hover:text-[#666]"
+                                    )}
+                                >
                                     <Shield className="w-3.5 h-3.5 fill-current" />
                                     Privileged
                                 </button>
-                                <button className="flex items-center justify-center gap-3 py-4 px-4 rounded-none border border-[#1a1a1a] bg-black text-[#444] font-bold text-[10px] uppercase tracking-widest hover:text-[#666] transition-all">
+                                <button
+                                    type="button"
+                                    onClick={() => setAccessMode("manifest")}
+                                    className={cn(
+                                        "flex items-center justify-center gap-3 py-4 px-4 rounded-none border font-bold text-[10px] uppercase tracking-widest transition-all",
+                                        accessMode === "manifest"
+                                            ? "border-tertiary-archive bg-black text-tertiary-archive"
+                                            : "border-[#1a1a1a] bg-black text-[#444] hover:text-[#666]"
+                                    )}
+                                >
                                     Manifest
                                 </button>
                             </div>
