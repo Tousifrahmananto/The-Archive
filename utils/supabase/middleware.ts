@@ -12,24 +12,34 @@ export const updateSession = async (request: NextRequest) => {
         },
     });
 
-    const supabase = createServerClient(supabaseUrl!, supabaseKey!, {
-        cookies: {
-            getAll() {
-                return request.cookies.getAll();
-            },
-            setAll(cookiesToSet) {
-                cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-                supabaseResponse = NextResponse.next({
-                    request,
-                });
-                cookiesToSet.forEach(({ name, value, options }) =>
-                    supabaseResponse.cookies.set(name, value, options)
-                );
-            },
-        },
-    });
+    // Skip middleware if Supabase is not configured
+    if (!supabaseUrl || !supabaseKey) {
+        return supabaseResponse;
+    }
 
-    await supabase.auth.getUser();
+    try {
+        const supabase = createServerClient(supabaseUrl, supabaseKey, {
+            cookies: {
+                getAll() {
+                    return request.cookies.getAll();
+                },
+                setAll(cookiesToSet) {
+                    cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+                    supabaseResponse = NextResponse.next({
+                        request,
+                    });
+                    cookiesToSet.forEach(({ name, value, options }) =>
+                        supabaseResponse.cookies.set(name, value, options)
+                    );
+                },
+            },
+        });
+
+        await supabase.auth.getUser();
+    } catch (error) {
+        // If middleware fails, continue without session
+        console.error("Middleware error:", error);
+    }
 
     return supabaseResponse;
 };
