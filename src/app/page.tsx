@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "motion/react";
 import Landing from "@/components/Landing";
@@ -59,6 +59,7 @@ function toDocument(file: UploadResult, index: number, fallbackAuthor: string): 
 
 export default function HomePage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [supabase] = useState(() => (hasSupabaseEnv ? createClient() : null));
     const [session, setSession] = useState<Session | null>(null);
     const [documents, setDocuments] = useState<ArchiveDocument[]>([]);
@@ -66,6 +67,7 @@ export default function HomePage() {
     const [selectedDoc, setSelectedDoc] = useState<ArchiveDocument | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [message, setMessage] = useState("");
+    const oauthCode = searchParams.get("code");
 
     async function getAccessToken() {
         if (!supabase) {
@@ -119,6 +121,17 @@ export default function HomePage() {
         }
 
         const initAuth = async () => {
+            if (oauthCode) {
+                const { error } = await supabase.auth.exchangeCodeForSession(oauthCode);
+
+                if (error) {
+                    setMessage(error.message);
+                }
+
+                router.replace("/");
+                return;
+            }
+
             const {
                 data: { session: initialSession },
             } = await supabase.auth.getSession();
@@ -145,7 +158,7 @@ export default function HomePage() {
         return () => {
             subscription.unsubscribe();
         };
-    }, [supabase]);
+    }, [oauthCode, router, supabase]);
 
     useEffect(() => {
         if (!session) {

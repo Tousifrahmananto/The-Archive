@@ -9,6 +9,7 @@ export default function LoginClient() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const modeParam = searchParams.get("mode");
+    const oauthCode = searchParams.get("code");
     const initialMode = useMemo(() => {
         if (modeParam === "signup" || modeParam === "reset-password") {
             return modeParam;
@@ -25,6 +26,15 @@ export default function LoginClient() {
         }
 
         const checkSession = async () => {
+            if (oauthCode) {
+                const { error } = await supabase.auth.exchangeCodeForSession(oauthCode);
+
+                if (!error) {
+                    router.replace("/");
+                    return;
+                }
+            }
+
             const {
                 data: { session },
             } = await supabase.auth.getSession();
@@ -35,7 +45,7 @@ export default function LoginClient() {
         };
 
         void checkSession();
-    }, [router, supabase]);
+    }, [oauthCode, router, supabase]);
 
     return (
         <Auth
