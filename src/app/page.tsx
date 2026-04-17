@@ -28,7 +28,15 @@ function formatBytes(value: number): string {
 
 function toDocument(file: UploadResult, index: number, fallbackAuthor: string): ArchiveDocument {
     const name = file.pathname.split("/").pop() ?? file.pathname;
-    const cleanName = name.replace(/\.pdf$/i, "");
+    const cleanName =
+        file.displayName?.trim() ||
+        decodeURIComponent(name)
+            .replace(/\.pdf$/i, "")
+            .replace(/^\d{10,}-/, "")
+            .replace(/[-_][a-zA-Z0-9]{10,}$/, "")
+            .replace(/[_-]+/g, " ")
+            .trim() ||
+        "Untitled document";
 
     return {
         id: file.url,

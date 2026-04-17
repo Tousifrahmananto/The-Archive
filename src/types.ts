@@ -30,4 +30,5 @@ export interface UploadResult {
     pathname: string;
     size: number;
     uploadedAt: string;
+    displayName?: string;
 }

@@ -6,6 +6,7 @@ type StoredFile = {
     pathname: string;
     size: number;
     uploadedAt: string;
+    displayName: string;
 };
 
 type UploadParams = {
@@ -24,6 +25,16 @@ const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseStorageBucket = process.env.SUPABASE_STORAGE_BUCKET ?? "pdfs";
+
+function toDisplayNameFromPath(pathname: string): string {
+    const rawFileName = decodeURIComponent(pathname.split("/").pop() ?? pathname);
+    const withoutExt = rawFileName.replace(/\.pdf$/i, "");
+    const withoutTimestamp = withoutExt.replace(/^\d{10,}-/, "");
+    const withoutRandomSuffix = withoutTimestamp.replace(/[-_][a-zA-Z0-9]{10,}$/, "");
+    const readable = withoutRandomSuffix.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+
+    return readable || "Untitled document";
+}
 
 function getStorageMode(): "blob" | "supabase" | null {
     if (blobToken) {
@@ -92,6 +103,7 @@ export async function uploadPdf({ userId, safeName, file }: UploadParams): Promi
             pathname: blob.pathname,
             size: file.size,
             uploadedAt: new Date().toISOString(),
+            displayName: toDisplayNameFromPath(blob.pathname),
         };
     }
 
@@ -118,6 +130,7 @@ export async function uploadPdf({ userId, safeName, file }: UploadParams): Promi
             pathname,
             size: file.size,
             uploadedAt: new Date().toISOString(),
+            displayName: toDisplayNameFromPath(pathname),
         };
     }
 
@@ -137,6 +150,7 @@ export async function listPdfs(userId: string): Promise<StoredFile[]> {
                 pathname: blob.pathname,
                 size: blob.size,
                 uploadedAt: new Date(blob.uploadedAt).toISOString(),
+                displayName: toDisplayNameFromPath(blob.pathname),
             }))
             .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
     }
@@ -163,6 +177,7 @@ export async function listPdfs(userId: string): Promise<StoredFile[]> {
                     pathname,
                     size: Number(item.metadata?.size ?? 0),
                     uploadedAt: item.created_at ?? item.updated_at ?? new Date().toISOString(),
+                    displayName: toDisplayNameFromPath(pathname),
                 };
             });
     }

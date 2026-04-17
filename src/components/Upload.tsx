@@ -47,6 +47,9 @@ export default function UploadView({ accessToken, onUploaded }: UploadProps) {
 
         const formData = new FormData();
         formData.append("file", selectedFile);
+        if (archiveLabel.trim()) {
+            formData.append("label", archiveLabel.trim());
+        }
 
         try {
             setProgress(42);

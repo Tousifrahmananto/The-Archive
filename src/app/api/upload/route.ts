@@ -22,6 +22,7 @@ export async function POST(request: Request) {
 
         const formData = await request.formData();
         const file = formData.get("file");
+        const labelValue = formData.get("label");
 
         if (!(file instanceof File)) {
             return NextResponse.json({ error: "No file uploaded." }, { status: 400 });
@@ -38,7 +39,14 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "PDF must be 20MB or smaller." }, { status: 400 });
         }
 
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const desiredBaseName =
+            typeof labelValue === "string" && labelValue.trim().length > 0
+                ? labelValue.trim()
+                : file.name.replace(/\.pdf$/i, "");
+        const desiredFileName = desiredBaseName.toLowerCase().endsWith(".pdf")
+            ? desiredBaseName
+            : `${desiredBaseName}.pdf`;
+        const safeName = desiredFileName.replace(/[^a-zA-Z0-9._-]/g, "_");
         const storedFile = await uploadPdf({
             userId: auth.userId,
             safeName,
@@ -52,6 +60,7 @@ export async function POST(request: Request) {
                 pathname: storedFile.pathname,
                 size: storedFile.size,
                 uploadedAt: storedFile.uploadedAt,
+                displayName: storedFile.displayName,
             },
         });
     } catch (error) {
