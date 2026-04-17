@@ -1,6 +1,6 @@
-import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { requireUserFromRequest } from "@/lib/require-user";
+import { getStorageSetupError, uploadPdf } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
@@ -14,16 +14,10 @@ export async function POST(request: Request) {
             return auth.response;
         }
 
-        const token = process.env.BLOB_READ_WRITE_TOKEN;
+        const storageSetupError = getStorageSetupError();
 
-        if (!token) {
-            return NextResponse.json(
-                {
-                    error:
-                        "Missing BLOB_READ_WRITE_TOKEN. Add it to .env.local for local dev or Vercel Project Settings for production.",
-                },
-                { status: 500 }
-            );
+        if (storageSetupError) {
+            return NextResponse.json({ error: storageSetupError }, { status: 500 });
         }
 
         const formData = await request.formData();
@@ -45,21 +39,19 @@ export async function POST(request: Request) {
         }
 
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const blobPath = `${auth.userId}/${safeName}`;
-
-        const blob = await put(blobPath, file, {
-            access: "public",
-            addRandomSuffix: true,
-            token,
+        const storedFile = await uploadPdf({
+            userId: auth.userId,
+            safeName,
+            file,
         });
 
         return NextResponse.json({
             ok: true,
             file: {
-                url: blob.url,
-                pathname: blob.pathname,
-                size: file.size,
-                uploadedAt: new Date().toISOString(),
+                url: storedFile.url,
+                pathname: storedFile.pathname,
+                size: storedFile.size,
+                uploadedAt: storedFile.uploadedAt,
             },
         });
     } catch (error) {

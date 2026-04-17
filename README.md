@@ -33,8 +33,14 @@ npm install
 copy .env.example .env.local
 ```
 
-Set `BLOB_READ_WRITE_TOKEN` in `.env.local`.
 Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` from your Supabase project API settings.
+
+Storage backend options:
+
+- Vercel Blob (default): set `BLOB_READ_WRITE_TOKEN`.
+- Supabase Storage (fallback when Blob token is not set): set `SUPABASE_SERVICE_ROLE_KEY` and optionally `SUPABASE_STORAGE_BUCKET` (default: `pdfs`).
+
+If you use Supabase Storage, create the bucket first (for example `pdfs`) and make it public if you want direct preview/shareable public links.
 
 3. In Supabase Auth settings:
 
@@ -54,9 +60,11 @@ Open `http://localhost:3000`.
 
 1. Push this repository to GitHub.
 2. Import the project in Vercel.
-3. Add environment variable `BLOB_READ_WRITE_TOKEN` in Vercel project settings.
-4. Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in Vercel project settings.
-5. Create a Blob store in Vercel Storage if you have not already.
+3. Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in Vercel project settings.
+4. Choose one storage backend:
+	- Vercel Blob: add `BLOB_READ_WRITE_TOKEN`.
+	- Supabase Storage: add `SUPABASE_SERVICE_ROLE_KEY` and (optionally) `SUPABASE_STORAGE_BUCKET`.
+5. Create the selected storage bucket/store if needed.
 6. Deploy.
 
 ## API Endpoints

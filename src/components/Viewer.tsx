@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
     ArrowLeft,
     ChevronLeft,
@@ -7,6 +8,7 @@ import {
     FileText,
     Layout,
     MoreVertical,
+    ExternalLink,
     Share2,
     ZoomIn,
     ZoomOut,
@@ -21,6 +23,8 @@ interface ViewerProps {
 }
 
 export default function DocumentViewer({ doc, onBack }: ViewerProps) {
+    const [shareState, setShareState] = useState<"idle" | "copied" | "failed">("idle");
+
     const outline = [
         { id: 1, title: "01 Introduction" },
         { id: 2, title: "02 Methodology" },
@@ -28,6 +32,21 @@ export default function DocumentViewer({ doc, onBack }: ViewerProps) {
         { id: 4, title: "04 Integration", active: true },
         { id: 5, title: "05 Conclusion" },
     ];
+
+    async function handleShareLink() {
+        try {
+            await navigator.clipboard.writeText(doc.url);
+            setShareState("copied");
+            window.setTimeout(() => {
+                setShareState("idle");
+            }, 2000);
+        } catch {
+            setShareState("failed");
+            window.setTimeout(() => {
+                setShareState("idle");
+            }, 2000);
+        }
+    }
 
     return (
         <div className="pt-16 lg:pt-0 min-h-screen flex flex-col lg:flex-row overflow-hidden">
@@ -45,9 +64,19 @@ export default function DocumentViewer({ doc, onBack }: ViewerProps) {
                 </div>
 
                 <div className="flex items-center gap-3 md:gap-6">
-                    <button className="flex items-center gap-2 px-3 md:px-6 py-2 border border-tertiary-archive text-tertiary-archive rounded-none font-bold text-[11px] uppercase tracking-widest transition-all hover:bg-tertiary-archive hover:text-on-tertiary-archive active:scale-95">
+                    <button
+                        onClick={handleShareLink}
+                        className="flex items-center gap-2 px-3 md:px-6 py-2 border border-tertiary-archive text-tertiary-archive rounded-none font-bold text-[11px] uppercase tracking-widest transition-all hover:bg-tertiary-archive hover:text-on-tertiary-archive active:scale-95"
+                    >
                         <Share2 className="w-3.5 h-3.5" />
-                        Dispatch
+                        {shareState === "copied" ? "Link Copied" : shareState === "failed" ? "Copy Failed" : "Share Link"}
+                    </button>
+                    <button
+                        onClick={() => window.open(doc.url, "_blank", "noopener,noreferrer")}
+                        className="flex items-center gap-2 px-3 md:px-6 py-2 border border-[#1a1a1a] text-white rounded-none font-bold text-[11px] uppercase tracking-widest transition-all hover:bg-[#1a1a1a] active:scale-95"
+                    >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Open PDF
                     </button>
                     <button className="p-2.5 text-[#444] hover:text-white transition-all">
                         <MoreVertical className="w-5 h-5" />
@@ -104,11 +133,25 @@ export default function DocumentViewer({ doc, onBack }: ViewerProps) {
                                 <p className="text-[#888] leading-[1.8] text-sm font-light">
                                     The document has been archived through the private PDF hosting pipeline. It is secured by Supabase Auth and stored in Vercel Blob.
                                 </p>
-                                <div className="aspect-video bg-[#050505] rounded-none overflow-hidden group border border-[#1a1a1a] flex items-center justify-center">
-                                    <div className="w-full h-full flex items-center justify-center text-[#333] gap-3">
-                                        <FileText className="w-10 h-10 text-tertiary-archive/70" />
-                                        <span className="text-[10px] uppercase tracking-[0.4em]">PDF Preview</span>
-                                    </div>
+                                <div className="aspect-[3/4] md:aspect-video bg-[#050505] rounded-none overflow-hidden group border border-[#1a1a1a]">
+                                    <object data={doc.url} type="application/pdf" className="w-full h-full bg-white">
+                                        <div className="w-full h-full flex flex-col items-center justify-center gap-4 px-6 text-center text-[#666] bg-[#050505]">
+                                            <FileText className="w-10 h-10 text-tertiary-archive/70" />
+                                            <p className="text-[10px] uppercase tracking-[0.4em]">PDF preview unavailable in this browser</p>
+                                            <button
+                                                onClick={() => window.open(doc.url, "_blank", "noopener,noreferrer")}
+                                                className="px-4 py-2 border border-[#1a1a1a] text-white text-[10px] uppercase tracking-[0.3em] hover:bg-[#1a1a1a] transition-colors"
+                                            >
+                                                Open PDF
+                                            </button>
+                                        </div>
+                                    </object>
+                                </div>
+                                <div className="flex items-center justify-between gap-4 flex-wrap border border-[#1a1a1a] bg-black/40 px-4 py-3 text-[10px] uppercase tracking-[0.25em] text-[#666]">
+                                    <span className="truncate max-w-[70%]">Public link ready: {doc.url}</span>
+                                    <button onClick={handleShareLink} className="text-tertiary-archive hover:text-white transition-colors">
+                                        {shareState === "copied" ? "Copied" : "Copy link"}
+                                    </button>
                                 </div>
                                 <p className="text-[#444] text-[11px] italic font-light border-l border-tertiary-archive/40 pl-6 py-2">
                                     "The goal is not to fill the space, but to curate the void." — Archive Interface

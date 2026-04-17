@@ -1,6 +1,6 @@
-import { list } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { requireUserFromRequest } from "@/lib/require-user";
+import { getStorageSetupError, listPdfs } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
@@ -12,29 +12,13 @@ export async function GET(request: Request) {
             return auth.response;
         }
 
-        const token = process.env.BLOB_READ_WRITE_TOKEN;
+        const storageSetupError = getStorageSetupError();
 
-        if (!token) {
-            return NextResponse.json(
-                {
-                    error:
-                        "Missing BLOB_READ_WRITE_TOKEN. Add it to .env.local for local dev or Vercel Project Settings for production.",
-                },
-                { status: 500 }
-            );
+        if (storageSetupError) {
+            return NextResponse.json({ error: storageSetupError }, { status: 500 });
         }
 
-        const { blobs } = await list({ token, prefix: `${auth.userId}/` });
-
-        const files = blobs
-            .filter((blob) => blob.pathname.toLowerCase().endsWith(".pdf"))
-            .map((blob) => ({
-                url: blob.url,
-                pathname: blob.pathname,
-                size: blob.size,
-                uploadedAt: blob.uploadedAt,
-            }))
-            .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+        const files = await listPdfs(auth.userId);
 
         return NextResponse.json({ files });
     } catch (error) {
