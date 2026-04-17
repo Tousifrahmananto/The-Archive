@@ -1,8 +1,28 @@
 import { NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { requireUserFromRequest } from "@/lib/require-user";
 import { deletePdf, getStorageSetupError } from "@/lib/storage";
 
 export const runtime = "nodejs";
+
+function noStoreJson(body: unknown, status = 200, extraHeaders?: HeadersInit) {
+    return NextResponse.json(body, {
+        status,
+        headers: {
+            "Cache-Control": "no-store",
+            ...extraHeaders,
+        },
+    });
+}
+
+function toSafeString(value: unknown): string | undefined {
+    if (typeof value !== "string") {
+        return undefined;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+}
 
 export async function DELETE(request: Request) {
     try {
@@ -12,28 +32,71 @@ export async function DELETE(request: Request) {
             return auth.response;
         }
 
+        const forwardedFor = request.headers.get("x-forwarded-for") ?? "unknown";
+        const ip = forwardedFor.split(",")[0]?.trim() || "unknown";
+        const rate = checkRateLimit({
+            key: `delete:${auth.userId}:${ip}`,
+            limit: 30,
+            windowMs: 60_000,
+        });
+
+        if (!rate.ok) {
+            return noStoreJson(
+                { error: "Too many delete requests. Please retry shortly." },
+                429,
+                {
+                    "Retry-After": String(rate.retryAfterSeconds),
+                    "X-RateLimit-Remaining": String(rate.remaining),
+                }
+            );
+        }
+
         const storageSetupError = getStorageSetupError();
 
         if (storageSetupError) {
-            return NextResponse.json({ error: storageSetupError }, { status: 500 });
+            return noStoreJson({ error: storageSetupError }, 500);
         }
 
-        const body = (await request.json()) as { url?: string; pathname?: string };
+        const rawBody = (await request.json()) as unknown;
 
-        if (!body.url && !body.pathname) {
-            return NextResponse.json({ error: "Missing file URL or path." }, { status: 400 });
+        if (!rawBody || typeof rawBody !== "object") {
+            return noStoreJson({ error: "Invalid request payload." }, 400);
+        }
+
+        const body = rawBody as { url?: unknown; pathname?: unknown };
+        const url = toSafeString(body.url);
+        const pathname = toSafeString(body.pathname);
+
+        if (!url && !pathname) {
+            return noStoreJson({ error: "Missing file URL or path." }, 400);
+        }
+
+        if (url && url.length > 2048) {
+            return noStoreJson({ error: "File URL is too long." }, 400);
+        }
+
+        if (pathname && pathname.length > 1024) {
+            return noStoreJson({ error: "File path is too long." }, 400);
         }
 
         await deletePdf({
             userId: auth.userId,
-            url: body.url,
-            pathname: body.pathname,
+            url,
+            pathname,
         });
 
-        return NextResponse.json({ ok: true });
+        return noStoreJson({ ok: true });
     } catch (error) {
         const message = error instanceof Error ? error.message : "Delete failed.";
-        const status = message.startsWith("Forbidden") ? 403 : 500;
-        return NextResponse.json({ error: message }, { status });
+
+        if (message.startsWith("Forbidden")) {
+            return noStoreJson({ error: "Forbidden. Cannot delete this file." }, 403);
+        }
+
+        if (message.startsWith("Missing") || message.startsWith("Invalid")) {
+            return noStoreJson({ error: message }, 400);
+        }
+
+        return noStoreJson({ error: "Delete failed." }, 500);
     }
 }

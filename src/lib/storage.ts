@@ -26,6 +26,25 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseStorageBucket = process.env.SUPABASE_STORAGE_BUCKET ?? "pdfs";
 
+function normalizeObjectPath(path: string): string {
+    return decodeURIComponent(path)
+        .replace(/\\/g, "/")
+        .replace(/^\/+/, "")
+        .trim();
+}
+
+function isUserScopedPath(path: string, userId: string): boolean {
+    return path.startsWith(`${userId}/`) && !path.includes("../") && !path.includes("..\\");
+}
+
+function isTrustedBlobHost(hostname: string): boolean {
+    return (
+        hostname === "blob.vercel-storage.com" ||
+        hostname.endsWith(".blob.vercel-storage.com") ||
+        hostname.endsWith(".public.blob.vercel-storage.com")
+    );
+}
+
 function toDisplayNameFromPath(pathname: string): string {
     const rawFileName = decodeURIComponent(pathname.split("/").pop() ?? pathname);
     const withoutExt = rawFileName.replace(/\.pdf$/i, "");
@@ -193,13 +212,33 @@ export async function deletePdf({ userId, url, pathname }: DeleteParams): Promis
             throw new Error("Missing file URL.");
         }
 
-        const expectedPrefix = `/${userId}/`;
+        let parsed: URL;
 
-        if (!url.includes(expectedPrefix)) {
+        try {
+            parsed = new URL(url);
+        } catch {
+            throw new Error("Invalid file URL.");
+        }
+
+        if ((parsed.protocol !== "https:" && parsed.protocol !== "http:") || !isTrustedBlobHost(parsed.hostname)) {
             throw new Error("Forbidden. Cannot delete this file.");
         }
 
-        await del(url, { token: blobToken });
+        const urlPath = normalizeObjectPath(parsed.pathname);
+
+        if (!isUserScopedPath(urlPath, userId)) {
+            throw new Error("Forbidden. Cannot delete this file.");
+        }
+
+        if (pathname) {
+            const providedPath = normalizeObjectPath(pathname);
+
+            if (providedPath !== urlPath || !isUserScopedPath(providedPath, userId)) {
+                throw new Error("Forbidden. Cannot delete this file.");
+            }
+        }
+
+        await del(parsed.toString(), { token: blobToken });
         return;
     }
 
@@ -211,11 +250,13 @@ export async function deletePdf({ userId, url, pathname }: DeleteParams): Promis
             throw new Error("Missing file path.");
         }
 
-        if (!resolvedPath.startsWith(`${userId}/`)) {
+        const normalizedPath = normalizeObjectPath(resolvedPath);
+
+        if (!isUserScopedPath(normalizedPath, userId)) {
             throw new Error("Forbidden. Cannot delete this file.");
         }
 
-        const { error } = await supabase.storage.from(supabaseStorageBucket).remove([resolvedPath]);
+        const { error } = await supabase.storage.from(supabaseStorageBucket).remove([normalizedPath]);
 
         if (error) {
             throw new Error(error.message);
