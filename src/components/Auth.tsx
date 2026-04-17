@@ -56,7 +56,7 @@ export default function Auth({
 
         const { error } = await supabaseBrowser.auth.signInWithOAuth({
             provider,
-            options: { redirectTo: window.location.origin },
+            options: { redirectTo: `${window.location.origin}/auth/callback` },
         });
 
         if (error) {
