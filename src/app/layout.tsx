@@ -1,21 +1,21 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, IBM_Plex_Mono } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
+const inter = Inter({
     variable: "--font-sans",
     subsets: ["latin"],
 });
 
-const plexMono = IBM_Plex_Mono({
-    variable: "--font-mono",
+const playfair = Playfair_Display({
+    variable: "--font-headline",
     subsets: ["latin"],
-    weight: ["400", "600"],
+    weight: ["400", "700"],
 });
 
 export const metadata: Metadata = {
-    title: "PDF Hosting",
-    description: "Upload and host PDF files on Vercel Blob.",
+    title: "The Archive | PDF Hosting",
+    description: "Archive-grade PDF hosting built with Supabase Auth and Vercel Blob.",
 };
 
 export default function RootLayout({
@@ -25,7 +25,7 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en">
-            <body className={`${spaceGrotesk.variable} ${plexMono.variable}`}>{children}</body>
+            <body className={`${inter.variable} ${playfair.variable}`}>{children}</body>
         </html>
     );
 }

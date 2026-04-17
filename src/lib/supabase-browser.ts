@@ -1,10 +1,2 @@
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-export const hasSupabaseEnv = Boolean(supabaseUrl && supabaseAnonKey);
-
-export const supabaseBrowser = hasSupabaseEnv
-  ? createClient(supabaseUrl!, supabaseAnonKey!)
-  : null;
+export { createClient as supabaseBrowser } from "@/utils/supabase/client";
+export { hasSupabaseEnv } from "@/utils/supabase/client";
