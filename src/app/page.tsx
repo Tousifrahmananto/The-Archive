@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "motion/react";
@@ -57,7 +57,7 @@ function toDocument(file: UploadResult, index: number, fallbackAuthor: string): 
     };
 }
 
-export default function HomePage() {
+function HomePageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [supabase] = useState(() => (hasSupabaseEnv ? createClient() : null));
@@ -286,5 +286,13 @@ export default function HomePage() {
             {message && <div className="fixed bottom-6 right-6 z-50 max-w-sm border border-[#1a1a1a] bg-black/90 px-4 py-3 text-sm text-[#d7b58a]">{message}</div>}
             {isLoading && <div className="fixed bottom-6 left-6 z-50 text-[10px] uppercase tracking-[0.4em] text-[#444]">Synchronizing archive...</div>}
         </div>
+    );
+}
+
+export default function HomePage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-[#050505]" />}>
+            <HomePageContent />
+        </Suspense>
     );
 }
