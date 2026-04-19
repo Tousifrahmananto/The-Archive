@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "motion/react";
@@ -13,6 +13,15 @@ import DocumentViewer from "@/components/Viewer";
 import ProfileView from "@/components/Profile";
 import { createClient, hasSupabaseEnv } from "@/utils/supabase/client";
 import type { ArchiveDocument, UploadResult, ViewType } from "@/types";
+
+const configuredIdleTimeout = Number(process.env.NEXT_PUBLIC_SESSION_IDLE_TIMEOUT_MINUTES);
+const SESSION_IDLE_TIMEOUT_MINUTES =
+    Number.isFinite(configuredIdleTimeout) && configuredIdleTimeout > 0
+        ? Math.round(configuredIdleTimeout)
+        : 30;
+const SESSION_IDLE_TIMEOUT_MS = SESSION_IDLE_TIMEOUT_MINUTES * 60 * 1000;
+const ACTIVITY_WRITE_THROTTLE_MS = 15000;
+const IDLE_CHECK_INTERVAL_MS = 60000;
 
 function formatBytes(value: number): string {
     if (!Number.isFinite(value) || value <= 0) {
@@ -71,6 +80,7 @@ function HomePageContent() {
     const [selectedDoc, setSelectedDoc] = useState<ArchiveDocument | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [message, setMessage] = useState("");
+    const logoutMessageRef = useRef<string | null>(null);
     const oauthCode = searchParams.get("code");
 
     const storageKey = session?.user.id ? `archive-shared:${session.user.id}` : null;
@@ -157,7 +167,13 @@ function HomePageContent() {
             if (!currentSession) {
                 setDocuments([]);
                 setSelectedDoc(null);
-                setMessage("");
+                setSharedPathnames([]);
+                if (logoutMessageRef.current) {
+                    setMessage(logoutMessageRef.current);
+                    logoutMessageRef.current = null;
+                } else {
+                    setMessage("");
+                }
             }
         });
 
@@ -176,6 +192,96 @@ function HomePageContent() {
 
         void loadDocuments(session);
     }, [session]);
+
+    useEffect(() => {
+        if (!supabase || !session) {
+            return;
+        }
+
+        const activityStorageKey = `archive-last-activity:${session.user.id}`;
+        let lastWrite = 0;
+        let hasSignedOut = false;
+
+        const writeActivity = (force = false) => {
+            const now = Date.now();
+
+            if (!force && now - lastWrite < ACTIVITY_WRITE_THROTTLE_MS) {
+                return;
+            }
+
+            lastWrite = now;
+            window.localStorage.setItem(activityStorageKey, String(now));
+        };
+
+        const readActivity = () => {
+            const raw = window.localStorage.getItem(activityStorageKey);
+            const parsed = raw ? Number(raw) : NaN;
+
+            if (Number.isFinite(parsed) && parsed > 0) {
+                return parsed;
+            }
+
+            return Date.now();
+        };
+
+        const signOutForInactivity = async () => {
+            if (hasSignedOut) {
+                return;
+            }
+
+            hasSignedOut = true;
+            logoutMessageRef.current = `Session expired after ${SESSION_IDLE_TIMEOUT_MINUTES} minutes of inactivity. Please login again.`;
+            await supabase.auth.signOut();
+            window.localStorage.removeItem(activityStorageKey);
+        };
+
+        const checkForIdleTimeout = () => {
+            if (Date.now() - readActivity() >= SESSION_IDLE_TIMEOUT_MS) {
+                void signOutForInactivity();
+            }
+        };
+
+        const handleActivity = () => {
+            if (document.visibilityState === "visible") {
+                writeActivity();
+            }
+        };
+
+        const handleVisibility = () => {
+            if (document.visibilityState === "visible") {
+                checkForIdleTimeout();
+                writeActivity(true);
+            }
+        };
+
+        const handleFocus = () => {
+            checkForIdleTimeout();
+            writeActivity(true);
+        };
+
+        writeActivity(true);
+
+        const intervalId = window.setInterval(checkForIdleTimeout, IDLE_CHECK_INTERVAL_MS);
+
+        window.addEventListener("pointerdown", handleActivity, { passive: true });
+        window.addEventListener("keydown", handleActivity);
+        window.addEventListener("scroll", handleActivity, { passive: true });
+        window.addEventListener("touchstart", handleActivity, { passive: true });
+        window.addEventListener("mousemove", handleActivity, { passive: true });
+        window.addEventListener("focus", handleFocus);
+        document.addEventListener("visibilitychange", handleVisibility);
+
+        return () => {
+            window.clearInterval(intervalId);
+            window.removeEventListener("pointerdown", handleActivity);
+            window.removeEventListener("keydown", handleActivity);
+            window.removeEventListener("scroll", handleActivity);
+            window.removeEventListener("touchstart", handleActivity);
+            window.removeEventListener("mousemove", handleActivity);
+            window.removeEventListener("focus", handleFocus);
+            document.removeEventListener("visibilitychange", handleVisibility);
+        };
+    }, [session, supabase]);
 
     useEffect(() => {
         if (!storageKey) {
@@ -222,12 +328,12 @@ function HomePageContent() {
             return;
         }
 
+        logoutMessageRef.current = "Signed out.";
         await supabase.auth.signOut();
         setSession(null);
         setCurrentView("landing");
         setDocuments([]);
         setSelectedDoc(null);
-        setMessage("Signed out.");
     }
 
     async function handleUploadCompleted() {
