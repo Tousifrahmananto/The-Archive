@@ -182,8 +182,8 @@ export default function Auth({
                         <div className="space-y-4">
                             <span className="text-[9px] font-bold uppercase tracking-[0.6em] text-tertiary-archive">Authorization Layer</span>
                             <h2 className="text-3xl font-light italic font-headline text-white tracking-tight">
-                                {activeMode === "login" && "Verify Identity"}
-                                {activeMode === "signup" && "Establish Vault"}
+                                {activeMode === "login" && "Login"}
+                                {activeMode === "signup" && "Register"}
                                 {activeMode === "reset-password" && "Reset Credential"}
                             </h2>
                         </div>
@@ -261,8 +261,8 @@ export default function Auth({
                                     <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
                                 ) : (
                                     <>
-                                        {activeMode === "login" && "Initialize Access"}
-                                        {activeMode === "signup" && "Create Archive"}
+                                        {activeMode === "login" && "Login"}
+                                        {activeMode === "signup" && "Register"}
                                         {activeMode === "reset-password" && "Request Reset"}
                                         <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                                     </>
@@ -290,7 +290,7 @@ export default function Auth({
                                     className="flex items-center justify-center py-4 border border-[#1a1a1a] hover:border-[#333] transition-all group"
                                 >
                                     <GitHubIcon />
-                                    <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-[#444] group-hover:text-white">Github</span>
+                                    <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-[#444] group-hover:text-white">GitHub</span>
                                 </button>
                             </div>
                         </div>
@@ -298,25 +298,25 @@ export default function Auth({
                         <div className="text-center pt-4">
                             {activeMode === "login" ? (
                                 <p className="text-[10px] text-[#444] uppercase tracking-[0.2em]">
-                                    Don&apos;t possess a vault?{" "}
+                                    Don&apos;t have an account?{" "}
                                     {onSwitchMode ? (
                                         <button
                                             onClick={() => onSwitchMode("signup")}
                                             className="text-white hover:text-tertiary-archive transition-colors ml-1 font-bold"
                                         >
-                                            Request Access
+                                            Register
                                         </button>
                                     ) : null}
                                 </p>
                             ) : (
                                 <p className="text-[10px] text-[#444] uppercase tracking-[0.2em]">
-                                    Already possesses access?{" "}
+                                    Already have an account?{" "}
                                     {onSwitchMode ? (
                                         <button
                                             onClick={() => onSwitchMode("login")}
                                             className="text-white hover:text-tertiary-archive transition-colors ml-1 font-bold"
                                         >
-                                            Authorize
+                                            Login
                                         </button>
                                     ) : null}
                                 </p>

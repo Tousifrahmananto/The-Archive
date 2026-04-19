@@ -34,13 +34,13 @@ export default function Landing({ onGetStarted, onLogin }: LandingProps) {
                         onClick={onLogin}
                         className="text-[10px] font-bold uppercase tracking-[0.3em] text-white hover:text-tertiary-archive transition-colors"
                     >
-                        Entry
+                        Login
                     </button>
                     <button
                         onClick={onGetStarted}
                         className="px-4 md:px-6 py-2 border border-tertiary-archive text-tertiary-archive text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-tertiary-archive hover:text-black transition-all"
                     >
-                        Establish Registry
+                        Register
                     </button>
                 </div>
             </nav>
@@ -72,11 +72,14 @@ export default function Landing({ onGetStarted, onLogin }: LandingProps) {
                             onClick={onGetStarted}
                             className="group flex items-center justify-center gap-4 px-8 md:px-10 py-4 md:py-5 bg-white text-black font-bold text-[11px] uppercase tracking-[0.35em] transition-all hover:scale-105 active:scale-95"
                         >
-                            Initialize Vault
+                            Register
                             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                         </button>
-                        <button className="px-8 md:px-10 py-4 md:py-5 border border-[#1a1a1a] text-[#444] font-bold text-[11px] uppercase tracking-[0.35em] hover:text-white hover:border-[#333] transition-all">
-                            Request Dossier
+                        <button
+                            onClick={onLogin}
+                            className="px-8 md:px-10 py-4 md:py-5 border border-[#1a1a1a] text-[#444] font-bold text-[11px] uppercase tracking-[0.35em] hover:text-white hover:border-[#333] transition-all"
+                        >
+                            Login
                         </button>
                     </div>
                 </motion.div>
