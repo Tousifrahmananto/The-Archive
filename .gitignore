@@ -30,3 +30,6 @@ coverage/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local planning docs
+FREE_FEATURE_ROADMAP.md
