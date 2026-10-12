@@ -59,12 +59,12 @@ function toDisplayNameFromPath(pathname: string): string {
 }
 
 function getStorageMode(): "blob" | "supabase" | null {
-    if (blobToken) {
-        return "blob";
-    }
-
     if (supabaseUrl && supabaseServiceRoleKey) {
         return "supabase";
+    }
+
+    if (blobToken) {
+        return "blob";
     }
 
     return null;

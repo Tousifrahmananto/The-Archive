@@ -78,14 +78,13 @@ export default function UploadView({ accessToken, onUploaded }: UploadProps) {
         }
 
         setIsUploading(true);
-        setProgress(18);
+        setProgress(0);
         setMessage("");
         const controller = new AbortController();
         activeUploadController.current = controller;
 
         try {
-            setProgress(42);
-            await uploadPdfDirect(selectedFile, archiveLabel.trim(), accessToken, controller.signal);
+            await uploadPdfDirect(selectedFile, archiveLabel.trim(), accessToken, controller.signal, setProgress);
 
             setProgress(100);
             setMessage(`Document archived successfully (${accessMode}).`);
@@ -93,7 +92,7 @@ export default function UploadView({ accessToken, onUploaded }: UploadProps) {
             setArchiveLabel("");
             onUploaded();
         } catch (error) {
-            if (error instanceof DOMException && error.name === "AbortError") {
+            if (controller.signal.aborted || (error instanceof DOMException && error.name === "AbortError")) {
                 setMessage("Upload canceled.");
                 setProgress(0);
                 return;
@@ -321,7 +320,7 @@ export default function UploadView({ accessToken, onUploaded }: UploadProps) {
                         <div className="flex items-start gap-4 text-[#444] italic">
                             <CheckCircle className="w-4 h-4 text-tertiary-archive shrink-0 mt-0.5" />
                             <p className="text-[10px] leading-relaxed uppercase tracking-wider">
-                                Upon finalizing, the document will be transmitted to Vercel Blob and indexed for private retrieval.
+                                Upon finalizing, the document will be stored and indexed for retrieval in your archive.
                             </p>
                         </div>
 

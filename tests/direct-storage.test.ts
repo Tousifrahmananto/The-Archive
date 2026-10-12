@@ -12,7 +12,7 @@ beforeEach(() => {
     vi.resetModules();
     vi.stubEnv("BLOB_READ_WRITE_TOKEN", "test-store-token");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://test.supabase.co");
-    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-key");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "");
     mocks.head.mockResolvedValue({ size: 6 * 1024 * 1024, url: "https://store.public.blob.vercel-storage.com/" + path });
     mocks.copy.mockResolvedValue({ url: "https://store.public.blob.vercel-storage.com/user/report.pdf" });
     mocks.del.mockResolvedValue(undefined);
@@ -61,7 +61,7 @@ describe("direct storage validation", () => {
     });
 
     it("uses signed Supabase uploads and validates before moving to the final path", async () => {
-        vi.stubEnv("BLOB_READ_WRITE_TOKEN", "");
+        vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-key");
         mocks.bucket.createSignedUploadUrl.mockResolvedValue({ data: { signedUrl: "https://test.supabase.co/signed" }, error: null });
         mocks.bucket.info.mockResolvedValue({ data: { size: 6 * 1024 * 1024 }, error: null });
         mocks.bucket.createSignedUrl.mockResolvedValue({ data: { signedUrl: "https://test.supabase.co/read" }, error: null });
@@ -69,6 +69,7 @@ describe("direct storage validation", () => {
         mocks.bucket.getPublicUrl.mockReturnValue({ data: { publicUrl: "https://test.supabase.co/report.pdf" } });
         const { preparePdfUpload, completePdfUpload } = await import("../src/lib/storage");
         expect((await preparePdfUpload("user", "report.pdf")).mode).toBe("supabase");
+        expect(mocks.token).not.toHaveBeenCalled();
         await completePdfUpload("user", path);
         expect(mocks.bucket.move).toHaveBeenCalledWith(path, "user/report-1234567890.pdf");
         expect(mocks.copy).not.toHaveBeenCalled();
