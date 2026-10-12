@@ -1,7 +1,6 @@
 "use client";
 
-import { ArrowRight, Cpu, Globe, Shield, ChevronDown } from "lucide-react";
-import { motion } from "motion/react";
+import { ArrowRight, ArrowUpRight, BookOpen, FileText, Link2, Upload } from "lucide-react";
 
 interface LandingProps {
     onGetStarted: () => void;
@@ -10,171 +9,97 @@ interface LandingProps {
 
 export default function Landing({ onGetStarted, onLogin }: LandingProps) {
     return (
-        <div className="min-h-screen bg-[#050505] text-white selection:bg-tertiary-archive/30 overflow-x-hidden">
-            <nav className="fixed top-0 w-full z-50 px-6 md:px-10 py-6 md:py-8 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent backdrop-blur-sm">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 border border-tertiary-archive flex items-center justify-center font-headline italic font-light text-tertiary-archive">
-                        A
-                    </div>
-                    <span className="text-xs font-bold uppercase tracking-[0.4em] font-headline">The Archive</span>
-                </div>
-                <div className="hidden md:flex items-center gap-12">
-                    {["Philosophy", "Security", "Intelligence", "Access"].map((item) => (
-                        <a
-                            key={item}
-                            href="#"
-                            className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#444] hover:text-white transition-colors"
-                        >
-                            {item}
-                        </a>
-                    ))}
-                </div>
-                <div className="flex items-center gap-4 md:gap-6">
-                    <button
-                        onClick={onLogin}
-                        className="text-[10px] font-bold uppercase tracking-[0.3em] text-white hover:text-tertiary-archive transition-colors"
-                    >
-                        Login
-                    </button>
-                    <button
-                        onClick={onGetStarted}
-                        className="px-4 md:px-6 py-2 border border-tertiary-archive text-tertiary-archive text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-tertiary-archive hover:text-black transition-all"
-                    >
-                        Register
-                    </button>
-                </div>
-            </nav>
-
-            <section className="relative min-h-screen flex flex-col items-center justify-center px-6 md:px-10">
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(201,165,106,0.12),transparent_40%)]" />
-                    <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-white/[0.02] to-transparent" />
-                </div>
-
-                <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-                    className="text-center z-10 max-w-5xl"
-                >
-                    <span className="text-[10px] font-bold uppercase tracking-[0.6em] text-tertiary-archive mb-6 block">
-                        Private Knowledge Infrastructure
-                    </span>
-                    <h1 className="text-5xl md:text-8xl font-light italic font-headline leading-[1.1] mb-8 md:mb-10 tracking-tight">
-                        Curate the void. <br />
-                        <span className="text-[#333]">Preserve the essence.</span>
-                    </h1>
-                    <p className="text-sm md:text-lg text-[#666] font-light max-w-2xl mx-auto leading-relaxed mb-10 md:mb-12 uppercase tracking-[0.08em] md:tracking-[0.1em]">
-                        A premium document vault for private PDF hosting. Secure auth, global storage, and an archive-grade interface.
-                    </p>
-                    <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6">
-                        <button
-                            onClick={onGetStarted}
-                            className="group flex items-center justify-center gap-4 px-8 md:px-10 py-4 md:py-5 bg-white text-black font-bold text-[11px] uppercase tracking-[0.35em] transition-all hover:scale-105 active:scale-95"
-                        >
-                            Register
-                            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                        </button>
-                        <button
-                            onClick={onLogin}
-                            className="px-8 md:px-10 py-4 md:py-5 border border-[#1a1a1a] text-[#444] font-bold text-[11px] uppercase tracking-[0.35em] hover:text-white hover:border-[#333] transition-all"
-                        >
-                            Login
+        <div className="min-h-screen bg-[#080909] text-[#f5f2eb] selection:bg-tertiary-archive/30">
+            <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-white focus:p-4 focus:text-black">Skip to content</a>
+            <header className="border-b border-white/10">
+                <nav aria-label="Main navigation" className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-6 sm:px-10 lg:px-12">
+                    <a href="#" aria-label="The Archive home" className="flex items-center gap-3">
+                        <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center border border-tertiary-archive/60 font-headline text-2xl italic text-tertiary-archive">A</span>
+                        <span className="text-sm font-semibold tracking-[0.14em]">THE ARCHIVE</span>
+                    </a>
+                    <div className="flex items-center gap-6 sm:gap-9">
+                        <a href="#how-it-works" className="hidden text-sm text-[#b5b5ae] transition-colors hover:text-white sm:block">How it works</a>
+                        <button type="button" onClick={onLogin} className="flex min-h-11 items-center gap-2 text-sm font-medium hover:text-tertiary-archive">
+                            Sign in <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
                         </button>
                     </div>
-                </motion.div>
+                </nav>
+            </header>
 
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 1, duration: 1 }}
-                    className="absolute bottom-12 flex flex-col items-center gap-4 cursor-pointer"
-                >
-                    <span className="text-[9px] font-bold uppercase tracking-[0.4em] text-[#222]">Philosophy</span>
-                    <ChevronDown className="w-4 h-4 text-[#222] animate-bounce" />
-                </motion.div>
-            </section>
+            <main id="main">
+                <section aria-labelledby="hero-title" className="relative mx-auto grid max-w-7xl items-center gap-14 px-6 py-16 sm:px-10 sm:py-20 lg:grid-cols-[1.05fr_1fr] lg:gap-20 lg:px-12 lg:py-28">
+                    <div>
+                        <p className="mb-7 flex items-center gap-3 text-xs font-medium uppercase tracking-[0.18em] text-tertiary-archive">
+                            <span aria-hidden="true" className="h-px w-8 bg-tertiary-archive" /> A home for your PDFs
+                        </p>
+                        <h1 id="hero-title" className="font-headline text-[clamp(3rem,5.6vw,5rem)] font-normal leading-[1.08] tracking-tight">
+                            Your PDFs.<br />
+                            <span className="italic text-tertiary-archive">All in one place.</span>
+                        </h1>
+                        <p className="mt-7 max-w-md text-base leading-relaxed text-[#b5b5ae] sm:text-lg">
+                            Upload your documents, find them when you need them, and share a link. A simple library for the PDFs you want to keep.
+                        </p>
+                        <button type="button" onClick={onGetStarted} className="mt-9 inline-flex min-h-13 items-center justify-center gap-5 bg-tertiary-archive px-6 py-4 text-sm font-semibold text-[#080909] transition-colors hover:bg-[#ddbd88]">
+                            Create your archive <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                        </button>
+                        <p className="mt-5 text-sm text-[#b5b5ae]">PDF files up to 20 MB. View them right in your browser.</p>
+                    </div>
 
-            <section className="py-24 md:py-32 px-6 md:px-10 bg-[#080808] border-y border-[#121212]">
-                <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-px bg-[#121212] border border-[#121212]">
-                    <div className="bg-[#080808] p-10 md:p-16 space-y-8">
-                        <div className="w-12 h-12 border border-[#1a1a1a] flex items-center justify-center text-tertiary-archive">
-                            <Shield className="w-6 h-6" />
+                    <div aria-label="Illustration of a PDF library" role="img" className="relative min-w-0 border border-white/15 bg-[#111313] p-5 shadow-[0_24px_80px_-40px_#c9a56a30] sm:p-8">
+                        <div className="mb-7 flex items-center justify-between border-b border-white/10 pb-5">
+                            <span className="flex items-center gap-2 text-sm text-[#e6e2d9]"><BookOpen className="h-4 w-4 text-tertiary-archive" /> Your library</span>
+                            <span className="text-[10px] uppercase tracking-[0.15em] text-[#b5b5ae]">A look inside</span>
                         </div>
-                        <h3 className="text-2xl font-light italic font-headline text-white tracking-wide">Digital Sovereignty</h3>
-                        <p className="text-[#555] text-xs leading-[1.8] uppercase tracking-widest font-light">
-                            Private storage with authenticated access. Files stay bound to your session and are served through Vercel Blob.
-                        </p>
-                    </div>
-                    <div className="bg-[#080808] p-10 md:p-16 space-y-8">
-                        <div className="w-12 h-12 border border-[#1a1a1a] flex items-center justify-center text-tertiary-archive">
-                            <Globe className="w-6 h-6" />
-                        </div>
-                        <h3 className="text-2xl font-light italic font-headline text-white tracking-wide">Semantic Intelligence</h3>
-                        <p className="text-[#555] text-xs leading-[1.8] uppercase tracking-widest font-light">
-                            Structured metadata, fast lookup, and a minimal interface for focused document retrieval.
-                        </p>
-                    </div>
-                    <div className="bg-[#080808] p-10 md:p-16 space-y-8">
-                        <div className="w-12 h-12 border border-[#1a1a1a] flex items-center justify-center text-tertiary-archive">
-                            <Cpu className="w-6 h-6" />
-                        </div>
-                        <h3 className="text-2xl font-light italic font-headline text-white tracking-wide">Editorial Interface</h3>
-                        <p className="text-[#555] text-xs leading-[1.8] uppercase tracking-widest font-light">
-                            Dark, cinematic document management built to feel intentional instead of generic.
-                        </p>
-                    </div>
-                </div>
-            </section>
-
-            <section className="py-28 md:py-40 px-6 md:px-10 text-center relative">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-tertiary-archive/5 blur-[100px] rounded-full" />
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    whileInView={{ opacity: 1 }}
-                    viewport={{ once: true }}
-                    className="max-w-4xl mx-auto"
-                >
-                    <span className="text-[10px] font-bold uppercase tracking-[0.6em] text-[#222] mb-12 block">
-                        The Architecture of Trust
-                    </span>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 md:gap-20">
-                        {[
-                            { label: "Documents Archived", value: "4.2M" },
-                            { label: "Security Audits", value: "100% Pass" },
-                            { label: "Uptime Reliability", value: "99.99%" },
-                            { label: "Active Curators", value: "12K+" },
-                        ].map((stat, i) => (
-                            <div key={i} className="space-y-4">
-                                <p className="text-4xl font-light italic font-headline text-white">{stat.value}</p>
-                                <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-[#444]">{stat.label}</p>
+                        <div className="mx-auto max-w-[290px] rotate-[-3deg] bg-[#ede7da] p-7 text-[#242824] shadow-xl sm:p-9">
+                            <div className="mb-10 flex items-center justify-between border-b border-[#242824]/20 pb-3 text-[9px] font-medium uppercase tracking-[0.16em]">
+                                <span>Collected ideas</span><span>No. 01</span>
                             </div>
-                        ))}
-                    </div>
-                </motion.div>
-            </section>
-
-            <footer className="py-16 md:py-20 px-6 md:px-10 border-t border-[#121212] bg-[#050505]">
-                <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-end gap-12">
-                    <div className="space-y-6">
-                        <div className="flex items-center gap-3">
-                            <div className="w-6 h-6 border border-[#222] flex items-center justify-center font-headline italic font-light text-[#444] text-[10px]">
-                                A
+                            <p className="font-headline text-4xl leading-tight">Room<br />for thought.</p>
+                            <p className="mt-4 text-xs leading-relaxed text-[#565b52]">Notes, references, and things worth returning to.</p>
+                            <div className="mt-8 flex h-14 items-end gap-2 border-b border-[#242824]/20 pb-3" aria-hidden="true">
+                                <span className="h-5 w-9 bg-[#b0b5a3]" /><span className="h-9 w-9 bg-[#737e69]" /><span className="h-7 w-9 bg-[#c4ac82]" /><span className="h-12 w-9 bg-[#394b3d]" />
                             </div>
-                            <span className="text-[10px] font-bold uppercase tracking-[0.4em] font-headline text-[#444]">The Archive</span>
+                            <p className="mt-5 text-[9px] uppercase tracking-[0.15em]">Field notes · PDF</p>
                         </div>
-                        <p className="text-[9px] font-bold uppercase tracking-[0.4em] text-[#222]">
-                            Secure PDF hosting built on Supabase Auth and Vercel Blob.
-                        </p>
+                        <div className="relative mt-7 flex items-center gap-3 border border-white/10 bg-[#171a18] p-4">
+                            <FileText aria-hidden="true" className="h-8 w-8 shrink-0 text-tertiary-archive" />
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm">Field notes.pdf</p>
+                                <p className="mt-1 text-xs text-[#b5b5ae]">Ready to read, whenever you are</p>
+                            </div>
+                        </div>
                     </div>
-                    <div className="flex flex-wrap gap-8 md:gap-12">
-                        {["Terms", "Privacy", "Security", "Legal"].map((item) => (
-                            <a key={item} href="#" className="text-[9px] font-bold uppercase tracking-[0.4em] text-[#444] hover:text-white transition-colors">
-                                {item}
-                            </a>
-                        ))}
+                </section>
+
+                <section id="how-it-works" aria-labelledby="steps-title" className="scroll-mt-8 border-y border-white/10 bg-[#0d0f0e]">
+                    <div className="mx-auto max-w-7xl px-6 py-14 sm:px-10 lg:px-12">
+                        <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
+                            <h2 id="steps-title" className="font-headline text-3xl sm:text-4xl">Less searching. More reading.</h2>
+                            <p className="text-sm text-[#b5b5ae]">Three simple steps.</p>
+                        </div>
+                        <ol className="grid list-none gap-8 md:grid-cols-3 md:gap-10">
+                            {[
+                                { icon: Upload, title: "Upload a PDF", text: "Choose a file or drag it into your archive. Give it a name you will recognize." },
+                                { icon: BookOpen, title: "Find it. Open it.", text: "Search your library by name and preview documents without leaving the page." },
+                                { icon: Link2, title: "Share a link", text: "Copy a document link when you want to share it. Anyone with that link can open the PDF." },
+                            ].map(({ icon: Icon, title, text }, index) => (
+                                <li key={title} className="border-t border-white/15 pt-6">
+                                    <div className="mb-5 flex items-center justify-between">
+                                        <Icon aria-hidden="true" className="h-5 w-5 text-tertiary-archive" />
+                                        <span className="text-xs text-[#b5b5ae]">0{index + 1}</span>
+                                    </div>
+                                    <h3 className="text-base font-medium">{title}</h3>
+                                    <p className="mt-3 max-w-sm text-sm leading-relaxed text-[#b5b5ae]">{text}</p>
+                                </li>
+                            ))}
+                        </ol>
                     </div>
-                </div>
+                </section>
+            </main>
+
+            <footer className="mx-auto flex max-w-7xl flex-col justify-between gap-4 px-6 py-7 text-xs leading-relaxed text-[#b5b5ae] sm:flex-row sm:px-10 lg:px-12">
+                <p>The Archive <span aria-hidden="true" className="mx-2">/</span> Keep what matters.</p>
+                <p>Your library requires sign-in. Shared PDF links are public.</p>
             </footer>
         </div>
     );

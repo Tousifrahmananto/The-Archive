@@ -130,8 +130,8 @@ If you are required to use Cursor or Claude Code explicitly, this repository is 
 - Search/filter with functional Recent and Shared views
 - Functional delete from library and viewer
 - Storage backend abstraction:
-  - Vercel Blob (default if token exists)
-  - Supabase Storage fallback (when Blob token is not configured)
+  - Supabase Storage (preferred when its service role key is configured)
+  - Vercel Blob fallback (when Supabase Storage is not configured)
 - API routes protected by Supabase bearer token verification
 - Backend rate limiting and security headers
 
@@ -185,8 +185,12 @@ Required auth env:
 - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
 Storage options:
-- Option A: BLOB_READ_WRITE_TOKEN
-- Option B: SUPABASE_SERVICE_ROLE_KEY (+ optional SUPABASE_STORAGE_BUCKET)
+- Preferred: SUPABASE_SERVICE_ROLE_KEY (+ optional SUPABASE_STORAGE_BUCKET, default `pdfs`)
+- Fallback: BLOB_READ_WRITE_TOKEN
+
+When both are configured, uploads, library listing and deletion use Supabase.
+Use a public `pdfs` bucket to retain the existing public preview/share links,
+with a 20 MB file limit and `application/pdf` as the allowed MIME type.
 
 ## Local Development
 
@@ -243,6 +247,26 @@ the user's bearer token; storage admin credentials stay on the server.
 The multipart API remains available for existing callers, subject to the hosting
 platform's request limit. Interrupted direct uploads may leave `.pending` files
 in storage; these are excluded from the library.
+
+Supabase uploads show actual transfer progress and time out after three minutes.
+The final verification step runs before the UI reports success.
+
+### Migrate existing Blob PDFs to Supabase
+
+Run from the repository root with both storage backends configured in `.env.local`:
+
+```bash
+node scripts/migrate-blob-to-supabase.mjs --self-test
+node scripts/migrate-blob-to-supabase.mjs
+node scripts/migrate-blob-to-supabase.mjs --apply
+```
+
+The default run validates without writing. `--apply` creates the bucket if
+needed, preserves user folders and filenames, verifies copied content with
+SHA-256, and refuses to overwrite different destination files. Valid unfinished
+`.pdf.pending` uploads are recovered; duplicate unfinished copies for the same
+user are skipped. Blob originals are retained, so existing Blob share links
+continue working. The library returns new Supabase URLs after the storage switch.
 
 ### GET /api/files
 - Returns authenticated user files
