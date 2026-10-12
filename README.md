@@ -232,6 +232,18 @@ All API routes require:
 - file required
 - label optional
 
+The web UI uploads PDFs up to 20 MB directly to the configured storage backend,
+avoiding Vercel Functions' 4.5 MB request limit. It first sends JSON metadata to
+this endpoint (`action: "prepare"`, `name`, `type`, `size`, optional `label`) to
+receive a credential restricted to a generated user-owned path. After uploading,
+it sends `action: "complete"` and `pathname`. The server checks the stored size
+and PDF signature before moving the file into the library. Both calls require
+the user's bearer token; storage admin credentials stay on the server.
+
+The multipart API remains available for existing callers, subject to the hosting
+platform's request limit. Interrupted direct uploads may leave `.pending` files
+in storage; these are excluded from the library.
+
 ### GET /api/files
 - Returns authenticated user files
 

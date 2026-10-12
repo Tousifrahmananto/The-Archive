@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { CheckCircle, PlusCircle, Shield, Upload, X } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
+import { uploadPdfDirect } from "@/lib/upload-pdf-client";
 
 interface UploadProps {
     accessToken: string;
@@ -82,27 +83,9 @@ export default function UploadView({ accessToken, onUploaded }: UploadProps) {
         const controller = new AbortController();
         activeUploadController.current = controller;
 
-        const formData = new FormData();
-        formData.append("file", selectedFile);
-        if (archiveLabel.trim()) {
-            formData.append("label", archiveLabel.trim());
-        }
-
         try {
             setProgress(42);
-            const response = await fetch("/api/upload", {
-                method: "POST",
-                headers: { Authorization: `Bearer ${accessToken}` },
-                body: formData,
-                signal: controller.signal,
-            });
-
-            setProgress(74);
-            const result = (await response.json()) as { error?: string };
-
-            if (!response.ok) {
-                throw new Error(result.error ?? "Upload failed.");
-            }
+            await uploadPdfDirect(selectedFile, archiveLabel.trim(), accessToken, controller.signal);
 
             setProgress(100);
             setMessage(`Document archived successfully (${accessMode}).`);

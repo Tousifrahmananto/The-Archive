@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireUserFromRequest } from "@/lib/require-user";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { getStorageSetupError, uploadPdf } from "@/lib/storage";
+import { completePdfUpload, getStorageSetupError, preparePdfUpload, uploadPdf } from "@/lib/storage";
+import { looksLikePdf, MAX_PDF_SIZE_BYTES } from "@/lib/pdf-upload";
 
 export const runtime = "nodejs";
 
-const MAX_PDF_SIZE_BYTES = 20 * 1024 * 1024;
 const MAX_LABEL_LENGTH = 120;
 
 function noStoreJson(body: unknown, status = 200, extraHeaders?: HeadersInit) {
@@ -16,17 +16,6 @@ function noStoreJson(body: unknown, status = 200, extraHeaders?: HeadersInit) {
             ...extraHeaders,
         },
     });
-}
-
-function looksLikePdf(bytes: Uint8Array): boolean {
-    return (
-        bytes.length >= 5 &&
-        bytes[0] === 0x25 &&
-        bytes[1] === 0x50 &&
-        bytes[2] === 0x44 &&
-        bytes[3] === 0x46 &&
-        bytes[4] === 0x2d
-    );
 }
 
 export async function POST(request: Request) {
@@ -62,12 +51,31 @@ export async function POST(request: Request) {
             return noStoreJson({ error: storageSetupError }, 500);
         }
 
-        const formData = await request.formData();
-        const file = formData.get("file");
-        const labelValue = formData.get("label");
-
-        if (!(file instanceof File)) {
-            return noStoreJson({ error: "No file uploaded." }, 400);
+        const direct = request.headers.get("content-type")?.includes("application/json");
+        let file: File | { name: string; type: string; size: number };
+        let labelValue: unknown;
+        if (direct) {
+            const body = await request.json();
+            if (!body || typeof body !== "object") {
+                return noStoreJson({ error: "Invalid upload request." }, 400);
+            }
+            if (body.action === "complete" && typeof body.pathname === "string") {
+                return noStoreJson({ ok: true, file: await completePdfUpload(auth.userId, body.pathname) });
+            }
+            if (body.action !== "prepare" || typeof body.name !== "string" || body.name.length > 255 ||
+                typeof body.type !== "string" || !Number.isSafeInteger(body.size)) {
+                return noStoreJson({ error: "Invalid upload request." }, 400);
+            }
+            file = { name: body.name, type: body.type, size: body.size };
+            labelValue = body.label ?? null;
+        } else {
+            const formData = await request.formData();
+            const uploadedFile = formData.get("file");
+            if (!(uploadedFile instanceof File)) {
+                return noStoreJson({ error: "No file uploaded." }, 400);
+            }
+            file = uploadedFile;
+            labelValue = formData.get("label");
         }
 
         if (file.size <= 0) {
@@ -85,9 +93,7 @@ export async function POST(request: Request) {
             return noStoreJson({ error: "PDF must be 20MB or smaller." }, 400);
         }
 
-        const head = new Uint8Array(await file.slice(0, 5).arrayBuffer());
-
-        if (!looksLikePdf(head)) {
+        if (file instanceof File && !looksLikePdf(new Uint8Array(await file.slice(0, 5).arrayBuffer()))) {
             return noStoreJson({ error: "Invalid PDF signature." }, 400);
         }
 
@@ -108,6 +114,9 @@ export async function POST(request: Request) {
             : `${desiredBaseName}.pdf`;
         const sanitized = desiredFileName.replace(/[^a-zA-Z0-9._-]/g, "_");
         const safeName = sanitized.length > 0 ? sanitized : "untitled.pdf";
+        if (!(file instanceof File)) {
+            return noStoreJson(await preparePdfUpload(auth.userId, safeName));
+        }
         const storedFile = await uploadPdf({
             userId: auth.userId,
             safeName,

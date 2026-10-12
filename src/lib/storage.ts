@@ -1,5 +1,8 @@
-import { list, put, del } from "@vercel/blob";
+import { list, put, del, head, copy } from "@vercel/blob";
+import { generateClientTokenFromReadWriteToken } from "@vercel/blob/client";
+import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+import { looksLikePdf, MAX_PDF_SIZE_BYTES } from "./pdf-upload";
 
 type StoredFile = {
     url: string;
@@ -154,6 +157,94 @@ export async function uploadPdf({ userId, safeName, file }: UploadParams): Promi
     }
 
     throw new Error(getStorageSetupError() || "No storage backend configured.");
+}
+
+export async function preparePdfUpload(userId: string, safeName: string) {
+    // shortcut: abandoned .pending uploads remain in storage; add expiry cleanup if they accumulate.
+    const pathname = `${userId}/${safeName.replace(/\.pdf$/i, "")}-${randomUUID().replace(/-/g, "")}.pdf.pending`;
+    if (getStorageMode() === "blob") {
+        const token = await generateClientTokenFromReadWriteToken({
+            token: blobToken,
+            pathname,
+            allowedContentTypes: ["application/pdf"],
+            maximumSizeInBytes: MAX_PDF_SIZE_BYTES,
+            validUntil: Date.now() + 10 * 60_000,
+            addRandomSuffix: false,
+            allowOverwrite: false,
+        });
+        return { mode: "blob" as const, pathname, token };
+    }
+    const { data, error } = await getSupabaseAdminClient().storage
+        .from(supabaseStorageBucket).createSignedUploadUrl(pathname, { upsert: false });
+    if (error) throw new Error(error.message);
+    return { mode: "supabase" as const, pathname, signedUrl: data.signedUrl };
+}
+
+export async function completePdfUpload(userId: string, pathname: string): Promise<StoredFile> {
+    if (!pathname.startsWith(`${userId}/`) ||
+        !/^[a-zA-Z0-9._-]+\.pdf\.pending$/.test(pathname.slice(userId.length + 1))) {
+        throw new Error("Invalid upload path.");
+    }
+    const mode = getStorageMode();
+    const bucket = mode === "supabase" ? getSupabaseAdminClient().storage.from(supabaseStorageBucket) : null;
+    let url: string;
+    let size: number;
+    if (bucket) {
+        const { data, error } = await bucket.info(pathname);
+        if (error) throw new Error(error.message);
+        size = data.size ?? 0;
+        const signed = await bucket.createSignedUrl(pathname, 60);
+        if (signed.error) throw new Error(signed.error.message);
+        url = signed.data.signedUrl;
+    } else {
+        const blob = await head(pathname, { token: blobToken });
+        url = blob.url;
+        size = blob.size;
+    }
+    async function removePending() {
+        if (bucket) {
+            const { error } = await bucket.remove([pathname]);
+            if (error) throw new Error(error.message);
+        } else {
+            await del(url, { token: blobToken });
+        }
+    }
+    if (size <= 0 || size > MAX_PDF_SIZE_BYTES) {
+        await removePending();
+        throw new Error("PDF must be non-empty and 20MB or smaller.");
+    }
+    const response = await fetch(url, { headers: { Range: "bytes=0-4" }, cache: "no-store", redirect: "error" });
+    if (!response.ok || !response.body) throw new Error("Could not verify uploaded PDF.");
+    const reader = response.body.getReader();
+    const signature = new Uint8Array(5);
+    let count = 0;
+    try {
+        while (count < 5) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const part = value.subarray(0, 5 - count);
+            signature.set(part, count);
+            count += part.length;
+        }
+    } finally {
+        await reader.cancel();
+    }
+    if (!looksLikePdf(signature)) {
+        await removePending();
+        throw new Error("Invalid PDF signature.");
+    }
+    // Pending files stay out of the library until server-side validation passes.
+    const finalPath = pathname.slice(0, -".pending".length);
+    if (bucket) {
+        const { error } = await bucket.move(pathname, finalPath);
+        if (error) throw new Error(error.message);
+        url = bucket.getPublicUrl(finalPath).data.publicUrl;
+    } else {
+        const blob = await copy(url, finalPath, { access: "public", contentType: "application/pdf", addRandomSuffix: false, token: blobToken });
+        await removePending();
+        url = blob.url;
+    }
+    return { url, pathname: finalPath, size, uploadedAt: new Date().toISOString(), displayName: toDisplayNameFromPath(finalPath) };
 }
 
 export async function listPdfs(userId: string): Promise<StoredFile[]> {
