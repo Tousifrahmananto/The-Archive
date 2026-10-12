@@ -38,10 +38,10 @@ export default function DocumentViewer({ doc, onBack, onDelete, isDeleting, onSh
     }
 
     return (
-        <div className="pt-16 lg:pt-0 min-h-screen flex flex-col lg:flex-row overflow-hidden">
-            <div className="fixed top-0 right-0 w-full lg:w-[calc(100%-16rem)] h-16 bg-[#050505]/90 backdrop-blur-xl flex justify-between items-center px-6 md:px-10 z-[45] border-b border-[#1a1a1a] lg:ml-64">
+        <div className="pt-32 sm:pt-16 lg:pt-0 min-h-screen flex flex-col lg:flex-row overflow-hidden">
+            <div className="fixed top-0 right-0 w-full lg:w-[calc(100%-16rem)] min-h-16 bg-[#050505]/90 backdrop-blur-xl flex flex-wrap gap-3 justify-between items-center px-6 py-3 md:px-10 z-[45] border-b border-[#1a1a1a] lg:ml-64">
                 <div className="flex items-center gap-4 min-w-0">
-                    <button onClick={onBack} className="p-2 hover:bg-[#1a1a1a] rounded-none text-[#666] transition-all active:scale-95">
+                    <button aria-label="Back to library" onClick={onBack} className="p-2 hover:bg-[#1a1a1a] rounded-none text-[#666] transition-all active:scale-95">
                         <ArrowLeft className="w-5 h-5" />
                     </button>
                     <div className="flex flex-col min-w-0">
@@ -60,13 +60,15 @@ export default function DocumentViewer({ doc, onBack, onDelete, isDeleting, onSh
                         <Share2 className="w-3.5 h-3.5" />
                         {shareState === "copied" ? "Link Copied" : shareState === "failed" ? "Copy Failed" : "Share Link"}
                     </button>
-                    <button
-                        onClick={() => window.open(doc.url, "_blank", "noopener,noreferrer")}
+                    <a
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="flex items-center gap-2 px-3 md:px-6 py-2 border border-[#1a1a1a] text-white rounded-none font-bold text-[11px] uppercase tracking-widest transition-all hover:bg-[#1a1a1a] active:scale-95"
                     >
                         <ExternalLink className="w-3.5 h-3.5" />
                         Open PDF
-                    </button>
+                    </a>
                     <button
                         type="button"
                         onClick={onMenuClick}
@@ -77,7 +79,7 @@ export default function DocumentViewer({ doc, onBack, onDelete, isDeleting, onSh
                 </div>
             </div>
 
-            <section className="flex-1 bg-[#050505] relative overflow-y-auto p-6 md:p-12 flex flex-col items-center">
+            <section className="min-w-0 flex-1 bg-[#050505] relative overflow-y-auto p-6 md:p-12 lg:mr-80 lg:pt-24 flex flex-col items-center">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.98 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -88,17 +90,19 @@ export default function DocumentViewer({ doc, onBack, onDelete, isDeleting, onSh
                         <p className="text-[10px] uppercase tracking-[0.3em] text-[#666]">Live preview and shareable public link</p>
                     </div>
 
-                    <div className="aspect-[3/4] md:aspect-video bg-[#050505] rounded-none overflow-hidden border border-[#1a1a1a]">
-                        <object data={doc.url} type="application/pdf" className="w-full h-full bg-white">
+                    <div className="h-[70vh] min-h-96 bg-[#050505] rounded-none overflow-hidden border border-[#1a1a1a]">
+                        <object aria-label={`PDF preview: ${doc.title}`} data={`${doc.url}#view=FitH&navpanes=0`} type="application/pdf" className="w-full h-full bg-white">
                             <div className="w-full h-full flex flex-col items-center justify-center gap-4 px-6 text-center text-[#666] bg-[#050505]">
                                 <FileText className="w-10 h-10 text-tertiary-archive/70" />
                                 <p className="text-[10px] uppercase tracking-[0.4em]">PDF preview unavailable in this browser</p>
-                                <button
-                                    onClick={() => window.open(doc.url, "_blank", "noopener,noreferrer")}
+                                <a
+                                    href={doc.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
                                     className="px-4 py-2 border border-[#1a1a1a] text-white text-[10px] uppercase tracking-[0.3em] hover:bg-[#1a1a1a] transition-colors"
                                 >
                                     Open PDF
-                                </button>
+                                </a>
                             </div>
                         </object>
                     </div>
@@ -114,7 +118,7 @@ export default function DocumentViewer({ doc, onBack, onDelete, isDeleting, onSh
                 <div className="h-32 w-full shrink-0" />
             </section>
 
-            <aside className="w-full lg:w-80 h-auto lg:h-full bg-[#0c0c0c] border-l border-[#1a1a1a] flex flex-col p-8 space-y-10 overflow-y-auto lg:fixed lg:right-0 lg:top-16 lg:bottom-0">
+            <aside className="w-full lg:w-80 h-auto bg-[#0c0c0c] border-l border-[#1a1a1a] flex flex-col p-8 space-y-10 overflow-y-auto lg:fixed lg:right-0 lg:top-16 lg:bottom-0">
                 <div>
                     <div className="flex items-center justify-between mb-8">
                         <h3 className="text-[10px] font-bold text-white uppercase tracking-[0.3em]">Document Details</h3>
@@ -161,12 +165,14 @@ export default function DocumentViewer({ doc, onBack, onDelete, isDeleting, onSh
                     </span>
                 </button>
 
-                <button
-                    onClick={() => window.open(doc.url, "_blank", "noopener,noreferrer")}
-                    className="mt-auto w-full py-3.5 border border-[#1a1a1a] text-[10px] font-bold uppercase tracking-widest text-[#555] hover:text-white hover:border-[#333] transition-all active:scale-[0.98]"
+                <a
+                    href={doc.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-auto w-full py-3.5 border border-[#1a1a1a] text-center text-[10px] font-bold uppercase tracking-widest text-[#555] hover:text-white hover:border-[#333] transition-all active:scale-[0.98]"
                 >
                     Open Original Document
-                </button>
+                </a>
             </aside>
         </div>
     );

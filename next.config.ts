@@ -1,5 +1,11 @@
 import type { NextConfig } from "next";
 
+const pdfFrameSources = [
+    "'self'",
+    "https://*.public.blob.vercel-storage.com",
+    ...(process.env.NEXT_PUBLIC_SUPABASE_URL ? [new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).origin] : []),
+].join(" ");
+
 const nextConfig: NextConfig = {
     experimental: {
         serverActions: {
@@ -21,6 +27,7 @@ const nextConfig: NextConfig = {
                             "font-src 'self' data:",
                             "connect-src 'self' https:",
                             "object-src 'self' https:",
+                            `frame-src ${pdfFrameSources}`,
                             "frame-ancestors 'none'",
                             "base-uri 'self'",
                             "form-action 'self'",
