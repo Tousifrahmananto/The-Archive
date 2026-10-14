@@ -5,7 +5,7 @@ import { MAX_PDF_SIZE_BYTES } from "../src/lib/pdf-upload";
 vi.mock("@vercel/blob/client", () => ({ put: vi.fn().mockResolvedValue({}) }));
 import { put } from "@vercel/blob/client";
 
-afterEach(() => { vi.unstubAllGlobals(); vi.clearAllMocks(); });
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.clearAllMocks(); });
 
 function pdf(size = 6 * 1024 * 1024) {
     return new File(["%PDF-", new Uint8Array(size - 5)], "large.pdf", { type: "application/pdf" });
@@ -29,6 +29,20 @@ function mockStorageUpload(status = 200) {
 }
 
 describe("direct PDF uploads", () => {
+    it("reports a stalled finalization as a timeout instead of remaining at 95%", async () => {
+        const deadline = new AbortController();
+        vi.spyOn(AbortSignal, "timeout").mockReturnValue(deadline.signal);
+        const fetchMock = vi.fn()
+            .mockResolvedValueOnce(Response.json({ mode: "supabase", pathname: "user/test.pdf.pending", signedUrl: "https://storage.example/signed" }))
+            .mockImplementationOnce(async (_url, options) => {
+                deadline.abort(new DOMException("Timed out", "TimeoutError"));
+                throw options.signal.reason;
+            });
+        vi.stubGlobal("fetch", fetchMock);
+        mockStorageUpload();
+        await expect(uploadPdfDirect(pdf(10), "", "session", new AbortController().signal)).rejects.toThrow("did not finish in time");
+    });
+
     it("sends a PDF larger than Vercel's limit to Blob, with only metadata going through the API", async () => {
         const fetchMock = vi.fn()
             .mockResolvedValueOnce(Response.json({ mode: "blob", pathname: "user/test.pdf.pending", token: "scoped-token" }))

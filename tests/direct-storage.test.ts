@@ -21,6 +21,20 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.resetAllMocks(); });
 
 describe("direct storage validation", () => {
+    it("finishes validation even when a cloned response never resolves stream cancellation", async () => {
+        const cancel = vi.fn(() => new Promise<void>(() => {}));
+        vi.mocked(fetch).mockResolvedValueOnce({
+            ok: true,
+            body: { getReader: () => ({ read: async () => ({ done: false, value: new TextEncoder().encode("%PDF-") }), cancel }) },
+        } as unknown as Response);
+        const { completePdfUpload } = await import("../src/lib/storage");
+        const result = await completePdfUpload("user", path);
+        expect(result.pathname).toBe("user/report-1234567890.pdf");
+        expect(cancel).toHaveBeenCalled();
+        expect(vi.mocked(fetch).mock.calls[0][1]?.signal?.aborted).toBe(true);
+        expect(mocks.copy).toHaveBeenCalled();
+    }, 1000);
+
     it("issues a restricted, expiring Blob token for a user-scoped staging path", async () => {
         mocks.token.mockResolvedValue("upload-token");
         const { preparePdfUpload } = await import("../src/lib/storage");

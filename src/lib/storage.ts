@@ -76,6 +76,12 @@ function getSupabaseAdminClient() {
     }
 
     return createClient(supabaseUrl, supabaseServiceRoleKey, {
+        global: {
+            fetch: (input, init) => fetch(input, {
+                ...init,
+                signal: AbortSignal.any([...(init?.signal ? [init.signal] : []), AbortSignal.timeout(15_000)]),
+            }),
+        },
         auth: {
             autoRefreshToken: false,
             persistSession: false,
@@ -213,7 +219,11 @@ export async function completePdfUpload(userId: string, pathname: string): Promi
         await removePending();
         throw new Error("PDF must be non-empty and 20MB or smaller.");
     }
-    const response = await fetch(url, { headers: { Range: "bytes=0-4" }, cache: "no-store", redirect: "error" });
+    const verificationController = new AbortController();
+    const response = await fetch(url, {
+        headers: { Range: "bytes=0-4" }, cache: "no-store", redirect: "error",
+        signal: AbortSignal.any([verificationController.signal, AbortSignal.timeout(15_000)]),
+    });
     if (!response.ok || !response.body) throw new Error("Could not verify uploaded PDF.");
     const reader = response.body.getReader();
     const signature = new Uint8Array(5);
@@ -227,7 +237,9 @@ export async function completePdfUpload(userId: string, pathname: string): Promi
             count += part.length;
         }
     } finally {
-        await reader.cancel();
+        // Next.js tees fetch responses; awaiting cancellation can wait forever for its other branch.
+        verificationController.abort();
+        void reader.cancel().catch(() => {});
     }
     if (!looksLikePdf(signature)) {
         await removePending();

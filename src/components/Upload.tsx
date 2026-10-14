@@ -178,7 +178,7 @@ export default function UploadView({ accessToken, onUploaded }: UploadProps) {
                                         {archiveLabel || "Untitled_Document.pdf"}
                                     </h4>
                                     <p className="text-[10px] text-[#555] font-bold uppercase tracking-widest">
-                                        {formattedSize} • Transmission Ready
+                                        {formattedSize} • {isUploading ? progress >= 95 ? "Verifying and saving PDF…" : "Uploading PDF…" : "Ready to upload"}
                                     </p>
                                 </div>
                                 <span className="text-[10px] font-bold text-tertiary-archive border border-tertiary-archive/30 px-3 py-1">

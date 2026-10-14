@@ -9,15 +9,23 @@ export async function uploadPdfDirect(file: File, label: string, accessToken: st
         throw new Error("Invalid PDF signature.");
     }
     async function uploadRequest(body: object) {
-        const response = await fetch("/api/upload", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-            signal: AbortSignal.any([signal, AbortSignal.timeout(120_000)]),
-        });
-        const result = await response.json().catch(() => null);
-        if (!response.ok || !result) throw new Error(result?.error ?? "Upload failed. Please retry.");
-        return result;
+        const requestSignal = AbortSignal.any([signal, AbortSignal.timeout(60_000)]);
+        try {
+            const response = await fetch("/api/upload", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+                signal: requestSignal,
+            });
+            const result = await response.json().catch(() => null);
+            if (!response.ok || !result) throw new Error(result?.error ?? "Upload failed. Please retry.");
+            return result;
+        } catch (error) {
+            if (!signal.aborted && requestSignal.aborted) {
+                throw new Error("PDF storage did not finish in time. Please retry shortly.");
+            }
+            throw error;
+        }
     }
     const prepared = await uploadRequest({ action: "prepare", name: file.name, type: file.type, size: file.size, label });
     onProgress(10);
